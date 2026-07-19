@@ -2,6 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import Hero from '../components/sections/Hero.astro';
 import Services from '../components/sections/Services.astro';
+import SpeedCompare from '../components/sections/SpeedCompare.astro';
 import BlogPreview from '../components/sections/BlogPreview.astro';
 
 const jsonLd = {
@@ -23,12 +24,14 @@ const jsonLd = {
 >
   <Hero />
   <Services />
+  <SpeedCompare />
   <BlogPreview />
 
   <section class="container-page pb-24">
     <div
       class="relative overflow-hidden rounded-[2.5rem] px-8 py-16 text-center sm:px-16"
       style="background: linear-gradient(135deg, var(--color-ink-900), var(--color-ink-950));"
+      data-reveal="scale"
     >
       <div
         aria-hidden="true"
@@ -36,12 +39,12 @@ const jsonLd = {
         style="background: linear-gradient(135deg, var(--color-brand-400), var(--color-accent-500));"
       ></div>
       <h2 class="relative font-display text-3xl font-bold text-white sm:text-4xl">
-        Parliamo del tuo prossimo progetto
+        Facciamo due chiacchiere?
       </h2>
       <p class="relative mx-auto mt-4 max-w-lg text-ink-300">
-        Rispondi a qualche domanda veloce: ti ricontattiamo con una proposta su misura entro 24 ore.
+        Bastano due minuti per raccontarci cosa hai in mente. Ti rispondiamo entro 24 ore, senza impegno.
       </p>
-      <a href="/contatti" class="btn-primary relative mt-8 inline-flex">Richiedi un preventivo</a>
+      <a href="/contatti" class="btn-primary relative mt-8 inline-flex">Raccontaci il tuo progetto</a>
     </div>
   </section>
 </Layout>

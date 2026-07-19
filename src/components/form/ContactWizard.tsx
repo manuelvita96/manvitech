@@ -8,6 +8,7 @@ type FormData = {
   email: string;
   phone: string;
   message: string;
+  privacyConsent: boolean;
 };
 
 const initialData: FormData = {
@@ -18,6 +19,7 @@ const initialData: FormData = {
   email: '',
   phone: '',
   message: '',
+  privacyConsent: false,
 };
 
 const PROJECT_TYPES = [
@@ -177,6 +179,20 @@ export default function ContactWizard() {
                 placeholder="Raccontaci qualcosa in più sul tuo progetto..."
               />
             </div>
+
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-ink-200 p-4 text-sm text-ink-600">
+              <input
+                type="checkbox"
+                required
+                checked={data.privacyConsent}
+                onChange={(e) => setData((d) => ({ ...d, privacyConsent: e.target.checked }))}
+                className="mt-0.5 h-5 w-5 shrink-0 accent-[#ed7d31]"
+              />
+              <span>
+                Ho letto l'<a href="/privacy-policy" target="_blank" className="font-medium text-brand-600 hover:underline">informativa privacy</a> e
+                acconsento al trattamento dei miei dati per essere ricontattato/a. *
+              </span>
+            </label>
           </div>
         ),
       },
@@ -189,7 +205,7 @@ export default function ContactWizard() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!data.name || !data.email) return;
+    if (!data.name || !data.email || !data.privacyConsent) return;
 
     setStatus('submitting');
     try {
@@ -269,7 +285,11 @@ export default function ContactWizard() {
         </button>
 
         {isLastStep && (
-          <button type="submit" disabled={status === 'submitting'} className="btn-primary disabled:opacity-60">
+          <button
+            type="submit"
+            disabled={status === 'submitting' || !data.privacyConsent}
+            className="btn-primary disabled:cursor-not-allowed disabled:opacity-50"
+          >
             {status === 'submitting' ? 'Invio in corso…' : 'Invia richiesta'}
           </button>
         )}

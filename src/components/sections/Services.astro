@@ -2,27 +2,39 @@
 const services = [
   {
     title: 'Siti internet',
-    description: 'Siti veloci, responsive e su misura, costruiti con tecnologie moderne per ogni dispositivo.',
+    description: 'Un sito che si carica in un lampo e sta bene su ogni schermo, dal telefono al monitor.',
     href: '/servizi/siti-internet',
     icon: 'globe',
   },
   {
+    title: 'Consulenza sito esistente',
+    description: 'Hai già un sito? Lo analizziamo e ti diciamo cosa non va e come sistemarlo.',
+    href: '/servizi/consulenza-sito-esistente',
+    icon: 'wrench',
+  },
+  {
     title: 'SEO & visibilità AI',
-    description: 'Posizionamento organico sui motori di ricerca e ottimizzazione per gli assistenti AI.',
+    description: 'Ti facciamo trovare su Google, e sempre di più anche da ChatGPT e simili.',
     href: '/servizi/seo',
     icon: 'search',
   },
   {
     title: 'Social media',
-    description: 'Gestione strategica dei tuoi canali social per costruire una community attiva.',
+    description: 'Ci pensiamo noi ai tuoi social, con una strategia vera, non post a caso.',
     href: '/servizi/social',
     icon: 'share',
   },
   {
     title: 'Graphic design',
-    description: 'Identità visiva coerente: logo, materiali e contenuti pensati per il tuo brand.',
+    description: 'Un\'immagine coordinata che si riconosce a colpo d\'occhio, ovunque la vedano.',
     href: '/servizi/design',
     icon: 'palette',
+  },
+  {
+    title: 'Manutenzione',
+    description: 'Aggiornamenti, controlli e piccole modifiche: ci pensiamo noi, mese dopo mese.',
+    href: '/servizi/manutenzione-e-assistenza',
+    icon: 'shield',
   },
 ];
 
@@ -31,26 +43,29 @@ const icons: Record<string, string> = {
   search: 'm21 21-4.35-4.35M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z',
   share: 'M8.7 10.7 15.3 7.3M8.7 13.3l6.6 3.4M7 14a3 3 0 1 0 0-4 3 3 0 0 0 0 4ZM17 7a3 3 0 1 0 0-4 3 3 0 0 0 0 4ZM17 21a3 3 0 1 0 0-4 3 3 0 0 0 0 4Z',
   palette: 'M12 3a9 9 0 1 0 0 18c1 0 1.5-.6 1.5-1.5 0-.4-.15-.75-.4-1.05-.24-.3-.4-.65-.4-1.05 0-.9.7-1.5 1.6-1.5H16a4 4 0 0 0 4-4c0-4.4-3.6-8-8-8ZM7 12a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM10 8a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM15 8a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM17 12a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z',
+  wrench: 'M14.7 6.3a4 4 0 0 0-5.6 4.6L3 17l3 3 6.1-6.1a4 4 0 0 0 4.6-5.6l-2.6 2.6-2-2 2.6-2.6Z',
+  shield: 'M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3ZM9.5 12l1.8 1.8L15 10',
 };
 ---
 
 <section class="container-page py-20 sm:py-28" aria-labelledby="services-heading">
   <div class="mx-auto max-w-2xl text-center">
-    <span class="badge">Cosa facciamo</span>
-    <h2 id="services-heading" class="mt-4 text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl">
-      Tutto ciò che serve per crescere online
+    <span class="badge" data-reveal>Cosa facciamo</span>
+    <h2 id="services-heading" class="mt-4 text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl" data-reveal>
+      Tutto quello che ti serve per farti notare
     </h2>
-    <p class="mt-4 text-ink-500">
-      Un unico partner per il tuo sito, la tua visibilità e la tua presenza social.
+    <p class="mt-4 text-ink-500" data-reveal style="transition-delay: 80ms;">
+      Un solo punto di riferimento per il sito, la visibilità e i social. Senza rimpalli tra fornitori diversi.
     </p>
   </div>
 
-  <div class="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-    {services.map((service) => (
+  <div class="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+    {services.map((service, i) => (
       <a
         href={service.href}
+        data-reveal
+        style={`transition-delay: ${i * 70}ms; box-shadow: var(--shadow-card);`}
         class="group relative flex flex-col rounded-3xl border border-ink-100 bg-white p-7 transition-all duration-300 hover:-translate-y-1"
-        style="box-shadow: var(--shadow-card);"
       >
         <div
           class="flex h-12 w-12 items-center justify-center rounded-2xl text-white transition-transform duration-300 group-hover:scale-110"

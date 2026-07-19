@@ -1,7 +1,8 @@
 ---
+import HeroIllustration from '../illustrations/HeroIllustration.astro';
 ---
 
-<section class="relative overflow-hidden pt-16 pb-20 sm:pt-24 sm:pb-28">
+<section class="relative overflow-hidden pt-16 pb-20 sm:pt-20 sm:pb-28">
   <!-- Blob decorativo organico, sfumato tra i colori del brand -->
   <div
     aria-hidden="true"
@@ -16,30 +17,29 @@
   >
   </div>
 
-  <div class="container-page relative">
-    <div class="mx-auto max-w-3xl text-center">
-      <span class="badge">
+  <div class="container-page relative grid items-center gap-12 lg:grid-cols-2 lg:gap-8">
+    <div class="text-center lg:text-left">
+      <span class="badge" data-reveal>
         <span class="h-1.5 w-1.5 rounded-full bg-brand-500"></span>
         Siti internet · SEO · Social
       </span>
 
-      <h1 class="mt-6 text-4xl font-bold leading-[1.08] tracking-tight text-ink-900 sm:text-6xl">
-        E se la tua idea<br class="hidden sm:block" />
-        diventasse un <span class="text-gradient">business online</span>?
+      <h1 class="mt-6 text-4xl font-bold leading-[1.08] tracking-tight text-ink-900 sm:text-6xl" data-reveal style="transition-delay: 80ms;">
+        Hai un'idea?<br class="hidden lg:block" />
+        Portiamola <span class="text-gradient">online sul serio</span>
       </h1>
 
-      <p class="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-ink-500">
-        Progettiamo siti internet veloci, moderni e su misura. Design curato,
-        posizionamento sui motori di ricerca e assistenza continua, senza
-        complicazioni.
+      <p class="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-ink-500 lg:mx-0" data-reveal style="transition-delay: 160ms;">
+        Ti costruiamo un sito veloce, curato nei minimi dettagli e pensato per portarti
+        clienti veri — non solo bello da guardare. Zero paroloni tecnici, solo risultati.
       </p>
 
-      <div class="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+      <div class="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start" data-reveal style="transition-delay: 240ms;">
         <a href="/contatti" class="btn-primary w-full sm:w-auto">Inizia il tuo progetto</a>
-        <a href="/portfolio" class="btn-ghost w-full sm:w-auto">Guarda i lavori</a>
+        <a href="/servizi" class="btn-ghost w-full sm:w-auto">Scopri come lavoriamo</a>
       </div>
 
-      <dl class="mx-auto mt-16 grid max-w-2xl grid-cols-3 gap-6 border-t border-ink-100 pt-8">
+      <dl class="mx-auto mt-16 grid max-w-2xl grid-cols-3 gap-6 border-t border-ink-100 pt-8 lg:mx-0" data-reveal style="transition-delay: 320ms;">
         <div>
           <dt class="sr-only">Punteggio prestazioni</dt>
           <dd class="font-display text-3xl font-bold text-ink-900">100<span class="text-brand-500">/100</span></dd>
@@ -56,6 +56,10 @@
           <p class="mt-1 text-xs text-ink-400">Tempo di risposta</p>
         </div>
       </dl>
+    </div>
+
+    <div class="mx-auto w-full max-w-md lg:max-w-none" data-reveal="scale" style="transition-delay: 200ms;">
+      <HeroIllustration />
     </div>
   </div>
 </section>
