@@ -1,0 +1,25 @@
+# Manvitech — robots.txt
+User-agent: *
+Allow: /
+
+# Crawler AI espliciti: consentiamo l'accesso per favorire la visibilità
+# di Manvitech nelle risposte di assistenti come ChatGPT, Perplexity e Claude.
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+Sitemap: https://manvitech.it/sitemap-index.xml

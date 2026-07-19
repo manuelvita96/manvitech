@@ -1,0 +1,28 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { getCollection, render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const services = await getCollection('pages');
+  return services.map((service) => ({
+    params: { slug: service.id },
+    props: { service },
+  }));
+}
+
+const { service } = Astro.props;
+const { Content } = await render(service);
+---
+
+<Layout title={service.data.title} description={service.data.description}>
+  <article class="container-page py-16 sm:py-20">
+    <div class="mx-auto max-w-2xl">
+      <a href="/servizi" class="text-sm font-medium text-ink-400 hover:text-brand-600">← Tutti i servizi</a>
+      <h1 class="mt-4 text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl">{service.data.title}</h1>
+      <div class="prose-article mt-10">
+        <Content />
+      </div>
+      <a href="/contatti" class="btn-primary mt-10 inline-flex">Richiedi informazioni</a>
+    </div>
+  </article>
+</Layout>

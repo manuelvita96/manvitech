@@ -1,0 +1,48 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ContactWizard from '../components/form/ContactWizard.tsx';
+---
+
+<Layout
+  title="Contatti"
+  description="Raccontaci il tuo progetto: rispondi a qualche domanda veloce e ti ricontattiamo entro 24 ore con una proposta su misura."
+>
+  <section class="container-page py-16 sm:py-24">
+    <div class="mx-auto max-w-xl text-center">
+      <span class="badge">Iniziamo</span>
+      <h1 class="mt-4 text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl">
+        Raccontaci il tuo progetto
+      </h1>
+      <p class="mt-4 text-ink-500">
+        Bastano 30 secondi: rispondi a qualche domanda e ti ricontattiamo con una proposta su misura.
+      </p>
+    </div>
+
+    <div class="mx-auto mt-10 max-w-xl">
+      <ContactWizard client:load />
+    </div>
+
+    <p class="mx-auto mt-8 max-w-xl text-center text-sm text-ink-400">
+      Preferisci scriverci direttamente? <a href="mailto:info@manvitech.it" class="font-medium text-brand-600 hover:underline">info@manvitech.it</a>
+    </p>
+  </section>
+
+  <!--
+    Form statico "ombra", nascosto via CSS: serve esclusivamente a far rilevare
+    a Netlify, in fase di build, tutti i campi del form dinamico React (che a
+    runtime mostra solo uno step alla volta e quindi non espone tutti i campi
+    nell'HTML statico). Deve avere lo stesso name e gli stessi campi del form reale.
+    Vedi: https://docs.netlify.com/manage/forms/setup/#javascript-rendered-forms
+  -->
+  <form name="richiesta-preventivo" data-netlify="true" netlify-honeypot="bot-field" hidden>
+    <input type="hidden" name="form-name" value="richiesta-preventivo" />
+    <input name="bot-field" />
+    <input name="projectType" />
+    <input name="goal" />
+    <input name="budget" />
+    <input name="name" />
+    <input name="email" />
+    <input name="phone" />
+    <textarea name="message"></textarea>
+  </form>
+</Layout>

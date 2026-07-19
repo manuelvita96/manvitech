@@ -1,0 +1,34 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { getCollection } from 'astro:content';
+
+const zones = (await getCollection('local-seo', ({ data }) => !data.draft)).sort((a, b) =>
+  a.data.city.localeCompare(b.data.city)
+);
+---
+
+<Layout
+  title="Dove operiamo"
+  description="Scopri le zone e le città in cui Manvitech realizza siti internet e strategie SEO per attività locali."
+>
+  <section class="container-page py-16 sm:py-24">
+    <div class="mx-auto max-w-2xl text-center">
+      <span class="badge">Presenza locale</span>
+      <h1 class="mt-4 text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl">Dove operiamo</h1>
+      <p class="mt-4 text-ink-500">Lavoriamo con attività in tutta Italia, con un occhio di riguardo per queste zone.</p>
+    </div>
+
+    {zones.length === 0 ? (
+      <p class="mt-16 text-center text-ink-400">Contenuti in arrivo.</p>
+    ) : (
+      <div class="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {zones.map((zone) => (
+          <a href={`/zone/${zone.id}`} class="rounded-2xl border border-ink-100 bg-white p-6 hover:border-brand-300 hover:bg-brand-50/40">
+            <h2 class="font-display text-lg font-semibold text-ink-900">{zone.data.city}</h2>
+            <p class="mt-1 text-sm text-ink-500">{zone.data.region}</p>
+          </a>
+        ))}
+      </div>
+    )}
+  </section>
+</Layout>

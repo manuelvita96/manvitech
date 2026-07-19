@@ -1,0 +1,50 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { getCollection, render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const zones = await getCollection('local-seo', ({ data }) => !data.draft);
+  return zones.map((zone) => ({
+    params: { slug: zone.id },
+    props: { zone },
+  }));
+}
+
+const { zone } = Astro.props;
+const { Content } = await render(zone);
+
+// LocalBusiness schema: rafforza la rilevanza locale per Google Maps,
+// ricerca locale e per gli assistenti AI che rispondono a query geolocalizzate.
+const jsonLd: Record<string, any> = {
+  '@context': 'https://schema.org',
+  '@type': 'ProfessionalService',
+  name: `Manvitech — ${zone.data.city}`,
+  description: zone.data.description,
+  areaServed: {
+    '@type': 'City',
+    name: zone.data.city,
+  },
+  parentOrganization: { '@id': 'https://manvitech.it/#organization' },
+};
+
+if (zone.data.latitude && zone.data.longitude) {
+  jsonLd.geo = {
+    '@type': 'GeoCoordinates',
+    latitude: zone.data.latitude,
+    longitude: zone.data.longitude,
+  };
+}
+---
+
+<Layout title={zone.data.title} description={zone.data.description} jsonLd={jsonLd}>
+  <article class="container-page py-16 sm:py-20">
+    <div class="mx-auto max-w-2xl">
+      <a href="/zone" class="text-sm font-medium text-ink-400 hover:text-brand-600">← Tutte le zone</a>
+      <span class="mt-6 badge">{zone.data.city}</span>
+      <h1 class="mt-4 text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl">{zone.data.title}</h1>
+      <div class="prose-article mt-10">
+        <Content />
+      </div>
+    </div>
+  </article>
+</Layout>
