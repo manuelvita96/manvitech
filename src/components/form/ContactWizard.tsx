@@ -1,4 +1,4 @@
-import { useState, useMemo, type FormEvent } from 'react';
+import { useState, useMemo, useRef, type FormEvent } from 'react';
 
 type FormData = {
   projectType: string;
@@ -74,6 +74,7 @@ function OptionGrid({
 }
 
 export default function ContactWizard() {
+  const formRef = useRef<HTMLFormElement>(null);
   const [step, setStep] = useState(0);
   const [data, setData] = useState<FormData>(initialData);
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
@@ -133,6 +134,7 @@ export default function ContactWizard() {
               </label>
               <input
                 id="name"
+                name="name"
                 required
                 value={data.name}
                 onChange={(e) => setData((d) => ({ ...d, name: e.target.value }))}
@@ -146,6 +148,7 @@ export default function ContactWizard() {
               </label>
               <input
                 id="email"
+                name="email"
                 type="email"
                 required
                 value={data.email}
@@ -160,6 +163,7 @@ export default function ContactWizard() {
               </label>
               <input
                 id="phone"
+                name="phone"
                 value={data.phone}
                 onChange={(e) => setData((d) => ({ ...d, phone: e.target.value }))}
                 className="w-full rounded-xl border border-ink-200 px-4 py-3 text-ink-900 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
@@ -172,6 +176,7 @@ export default function ContactWizard() {
               </label>
               <textarea
                 id="message"
+                name="message"
                 value={data.message}
                 onChange={(e) => setData((d) => ({ ...d, message: e.target.value }))}
                 rows={3}
@@ -205,18 +210,21 @@ export default function ContactWizard() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!data.name || !data.email || !data.privacyConsent) return;
+    if (!data.name || !data.email || !data.privacyConsent || !formRef.current) return;
 
     setStatus('submitting');
     try {
-      const body = new URLSearchParams({
-        'form-name': 'richiesta-preventivo',
-        ...data,
-      });
-      const res = await fetch('/', {
+      // Costruiamo il body leggendo direttamente i campi presenti nel form nel DOM
+      // (inclusi i campi nascosti sincronizzati con lo stato più sotto), invece di
+      // fidarci solo dello stato React: così siamo sicuri che quello che vediamo
+      // sullo schermo sia esattamente quello che viene inviato a Netlify.
+      const formData = new FormData(formRef.current);
+      const body = new URLSearchParams(formData as any).toString();
+
+      const res = await fetch(window.location.pathname, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: body.toString(),
+        body,
       });
       if (!res.ok) throw new Error('Errore invio');
       setStatus('success');
@@ -244,6 +252,7 @@ export default function ContactWizard() {
 
   return (
     <form
+      ref={formRef}
       name="richiesta-preventivo"
       data-netlify="true"
       netlify-honeypot="bot-field"
@@ -258,6 +267,14 @@ export default function ContactWizard() {
           Non compilare questo campo: <input name="bot-field" />
         </label>
       </p>
+
+      {/* Campi delle scelte a bottoni (step 1-3): non hanno un <input> visibile,
+          quindi li teniamo sincronizzati qui come hidden, sempre presenti nel DOM
+          del form reale, così finiscono sempre nella FormData inviata. */}
+      <input type="hidden" name="projectType" value={data.projectType} />
+      <input type="hidden" name="goal" value={data.goal} />
+      <input type="hidden" name="budget" value={data.budget} />
+      <input type="hidden" name="privacyConsent" value={data.privacyConsent ? 'true' : 'false'} />
 
       <div className="mb-8 flex items-center gap-3">
         <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-ink-100">
