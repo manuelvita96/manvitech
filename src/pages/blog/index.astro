@@ -1,5 +1,6 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import { getCollection } from 'astro:content';
 
 const allPosts = await getCollection('blog', ({ data }) => !data.draft);
@@ -21,6 +22,7 @@ const jsonLd = {
   description="Consigli, guide e novità su siti internet, SEO e social media marketing per far crescere la tua attività online."
   jsonLd={jsonLd}
 >
+  <Breadcrumbs items={[{ label: 'Blog', href: '/blog' }]} />
   <section class="container-page py-16 sm:py-24">
     <div class="mx-auto max-w-2xl text-center">
       <span class="badge">Il nostro blog</span>

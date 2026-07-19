@@ -27,12 +27,28 @@ const localSeo = defineCollection({
     title: z.string(),
     description: z.string().max(160),
     city: z.string(),
-    region: z.string().default('Italia'),
+    region: z.string().default('Toscana'),
+    // 'city' = pagina dedicata a un singolo comune prioritario
+    // 'area' = pagina macro-zona che copre più comuni minori
+    pageType: z.enum(['city', 'area']).default('city'),
+    distanceKm: z.number().optional(),
+    // Comuni coperti (utile soprattutto per le pagine 'area', ma anche
+    // per linkare i comuni limitrofi da una pagina 'city')
+    nearbyTowns: z.array(z.string()).default([]),
     // Coordinate per lo schema LocalBusiness / mappa (opzionali finché non decise)
     latitude: z.number().optional(),
     longitude: z.number().optional(),
     // Parole chiave locali su cui puntare (usate anche nello structured data)
     keywords: z.array(z.string()).default([]),
+    // FAQ specifiche della pagina: alimentano sia i contenuti che il FAQPage schema
+    faq: z
+      .array(
+        z.object({
+          question: z.string(),
+          answer: z.string(),
+        })
+      )
+      .default([]),
     draft: z.boolean().default(false),
   }),
 });

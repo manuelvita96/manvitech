@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import ContactWizard from '../components/form/ContactWizard.tsx';
+import ChatIllustration from '../components/illustrations/ChatIllustration.astro';
 ---
 
 <Layout
@@ -18,7 +19,11 @@ import ContactWizard from '../components/form/ContactWizard.tsx';
       </p>
     </div>
 
-    <div class="mx-auto mt-10 max-w-xl">
+    <div class="mx-auto mt-8 max-w-xs sm:max-w-sm">
+      <ChatIllustration />
+    </div>
+
+    <div class="mx-auto mt-6 max-w-xl">
       <ContactWizard client:load />
     </div>
 

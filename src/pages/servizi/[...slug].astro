@@ -1,28 +1,56 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import { getCollection, render } from 'astro:content';
 
 export async function getStaticPaths() {
   const services = await getCollection('pages');
   return services.map((service) => ({
     params: { slug: service.id },
-    props: { service },
+    props: { service, allServices: services },
   }));
 }
 
-const { service } = Astro.props;
+const { service, allServices } = Astro.props;
 const { Content } = await render(service);
+
+const otherServices = allServices
+  .filter((s) => s.id !== service.id)
+  .sort((a, b) => a.data.order - b.data.order)
+  .slice(0, 3);
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Service',
+  name: service.data.title,
+  description: service.data.description,
+  provider: { '@id': 'https://manvitech.it/#organization' },
+  areaServed: 'IT',
+};
 ---
 
-<Layout title={service.data.title} description={service.data.description}>
-  <article class="container-page py-16 sm:py-20">
+<Layout title={service.data.title} description={service.data.description} jsonLd={jsonLd}>
+  <Breadcrumbs items={[{ label: 'Servizi', href: '/servizi' }, { label: service.data.title, href: `/servizi/${service.id}` }]} />
+  <article class="container-page py-10 sm:py-14">
     <div class="mx-auto max-w-2xl">
-      <a href="/servizi" class="text-sm font-medium text-ink-400 hover:text-brand-600">← Tutti i servizi</a>
-      <h1 class="mt-4 text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl">{service.data.title}</h1>
+      <h1 class="text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl">{service.data.title}</h1>
       <div class="prose-article mt-10">
         <Content />
       </div>
       <a href="/contatti" class="btn-primary mt-10 inline-flex">Richiedi informazioni</a>
+
+      {otherServices.length > 0 && (
+        <div class="mt-16 border-t border-ink-100 pt-10">
+          <h2 class="font-display text-lg font-semibold text-ink-900">Altri servizi che potrebbero interessarti</h2>
+          <div class="mt-5 grid gap-3 sm:grid-cols-3">
+            {otherServices.map((s) => (
+              <a href={`/servizi/${s.id}`} class="rounded-2xl border border-ink-100 p-4 text-sm font-medium text-ink-700 hover:border-brand-300 hover:text-brand-600">
+                {s.data.title}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   </article>
 </Layout>

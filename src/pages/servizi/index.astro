@@ -1,5 +1,6 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import { getCollection } from 'astro:content';
 
 const services = (await getCollection('pages')).sort((a, b) => a.data.order - b.data.order);
@@ -9,6 +10,7 @@ const services = (await getCollection('pages')).sort((a, b) => a.data.order - b.
   title="Servizi"
   description="Siti internet, SEO, gestione social e graphic design: tutti i servizi di Manvitech per far crescere la tua attività online."
 >
+  <Breadcrumbs items={[{ label: 'Servizi', href: '/servizi' }]} />
   <section class="container-page py-16 sm:py-24">
     <div class="mx-auto max-w-2xl text-center">
       <span class="badge">I nostri servizi</span>

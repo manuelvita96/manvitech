@@ -1,0 +1,54 @@
+---
+const steps = [
+  {
+    number: '01',
+    title: 'Ci raccontiamo',
+    description: 'Una chiacchierata (anche solo 30 secondi via form) per capire cosa ti serve davvero e a chi vuoi parlare.',
+  },
+  {
+    number: '02',
+    title: 'Progettiamo',
+    description: 'Ti proponiamo una direzione chiara — struttura, stile, contenuti — prima ancora di scrivere una riga di codice.',
+  },
+  {
+    number: '03',
+    title: 'Costruiamo',
+    description: 'Sviluppiamo il sito con tecnologie moderne: veloce, responsive, pronto per Google fin dal primo giorno.',
+  },
+  {
+    number: '04',
+    title: 'Andiamo online',
+    description: 'Pubblichiamo, controlliamo che tutto funzioni alla perfezione e restiamo al tuo fianco anche dopo.',
+  },
+];
+---
+
+<section class="container-page py-20 sm:py-28" aria-labelledby="process-heading">
+  <div class="mx-auto max-w-2xl text-center" data-reveal>
+    <span class="badge">Come lavoriamo</span>
+    <h2 id="process-heading" class="mt-4 text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl">
+      Niente sorprese, solo un percorso chiaro
+    </h2>
+    <p class="mt-4 text-ink-500">
+      Sappiamo che affidare il proprio sito a qualcuno può far storcere il naso. Ecco esattamente come lavoriamo, passo per passo.
+    </p>
+  </div>
+
+  <div class="relative mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+    <!-- Linea di collegamento tra gli step, solo su schermi larghi -->
+    <div class="pointer-events-none absolute top-8 left-0 right-0 hidden h-0.5 lg:block" style="background: linear-gradient(90deg, var(--color-brand-200), var(--color-accent-400) 50%, var(--color-brand-200));"></div>
+
+    {steps.map((step, i) => (
+      <div class="relative" data-reveal style={`transition-delay: ${i * 100}ms;`}>
+        <div
+          class="relative z-10 flex h-16 w-16 items-center justify-center rounded-2xl font-display text-xl font-bold text-white"
+          style="background: linear-gradient(135deg, var(--color-brand-500), var(--color-accent-500)); box-shadow: var(--shadow-glow);"
+        >
+          {step.number}
+        </div>
+        <h3 class="mt-5 font-display text-lg font-semibold text-ink-900">{step.title}</h3>
+        <p class="mt-2 text-sm leading-relaxed text-ink-500">{step.description}</p>
+      </div>
+    ))}
+  </div>
+</section>

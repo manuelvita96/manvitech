@@ -3,7 +3,9 @@ import Layout from '../layouts/Layout.astro';
 import Hero from '../components/sections/Hero.astro';
 import Services from '../components/sections/Services.astro';
 import SpeedCompare from '../components/sections/SpeedCompare.astro';
+import Process from '../components/sections/Process.astro';
 import BlogPreview from '../components/sections/BlogPreview.astro';
+import Faq from '../components/Faq.astro';
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -15,6 +17,34 @@ const jsonLd = {
   inLanguage: 'it-IT',
   publisher: { '@id': 'https://manvitech.it/#organization' },
 };
+
+const homeFaq = [
+  {
+    question: 'Quanto costa un sito internet?',
+    answer:
+      'Dipende da cosa ti serve: un sito vetrina semplice ha un costo diverso da uno più articolato o da un e-commerce. Nella prima chiacchierata capiamo l\'obiettivo e ti diamo un preventivo chiaro, senza sorprese dopo.',
+  },
+  {
+    question: 'Quanto tempo ci vuole per avere il sito online?',
+    answer:
+      'Per un sito vetrina, generalmente tra le 3 e le 5 settimane dal primo contatto, a seconda di quanto materiale (testi, foto) hai già pronto.',
+  },
+  {
+    question: 'Il sito resta mio o resta vostro?',
+    answer:
+      'Il sito è tuo al 100%: dominio, codice e contenuti restano di tua proprietà. Se un giorno vuoi cambiare fornitore, puoi farlo senza vincoli.',
+  },
+  {
+    question: 'Posso modificare i contenuti da solo dopo il lancio?',
+    answer:
+      'Sì, ti mostriamo come aggiornare testi, immagini e articoli del blog in autonomia. Se preferisci non pensarci, offriamo anche un servizio di manutenzione continua.',
+  },
+  {
+    question: 'Lavorate solo con attività della zona di Fucecchio?',
+    answer:
+      'No, lavoriamo con clienti in tutta Italia. Conosciamo bene il territorio intorno a Fucecchio, ma gran parte del progetto si segue comodamente online ovunque tu sia.',
+  },
+];
 ---
 
 <Layout
@@ -25,7 +55,9 @@ const jsonLd = {
   <Hero />
   <Services />
   <SpeedCompare />
+  <Process />
   <BlogPreview />
+  <Faq items={homeFaq} subtitle="Le domande che ci fanno più spesso, prima di iniziare a lavorare insieme." />
 
   <section class="container-page pb-24">
     <div

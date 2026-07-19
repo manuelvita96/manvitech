@@ -1,5 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import GrowthIllustration from '../components/illustrations/GrowthIllustration.astro';
 ---
 
 <Layout
@@ -7,15 +8,20 @@ import Layout from '../layouts/Layout.astro';
   description="Manvitech è un team che crede nelle idee degli altri e sa come costruirle: siti internet, SEO e social per far crescere la tua attività."
 >
   <section class="container-page py-16 sm:py-24">
-    <div class="mx-auto max-w-2xl text-center">
-      <span class="badge" data-reveal>Chi siamo</span>
-      <h1 class="mt-4 text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl" data-reveal style="transition-delay: 80ms;">
-        Ci piacciono le idee degli altri
-      </h1>
-      <p class="mt-5 text-lg leading-relaxed text-ink-500" data-reveal style="transition-delay: 160ms;">
-        E sappiamo come farle diventare qualcosa di concreto. Niente template riciclati:
-        studiamo la tua attività prima di proporti qualsiasi cosa, dal sito ai social.
-      </p>
+    <div class="mx-auto grid max-w-5xl items-center gap-10 lg:grid-cols-2 lg:gap-16">
+      <div class="text-center lg:text-left">
+        <span class="badge" data-reveal>Chi siamo</span>
+        <h1 class="mt-4 text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl" data-reveal style="transition-delay: 80ms;">
+          Ci piacciono le idee degli altri
+        </h1>
+        <p class="mt-5 text-lg leading-relaxed text-ink-500" data-reveal style="transition-delay: 160ms;">
+          E sappiamo come farle diventare qualcosa di concreto. Niente template riciclati:
+          studiamo la tua attività prima di proporti qualsiasi cosa, dal sito ai social.
+        </p>
+      </div>
+      <div class="mx-auto w-full max-w-sm lg:max-w-none" data-reveal="scale" style="transition-delay: 200ms;">
+        <GrowthIllustration />
+      </div>
     </div>
 
     <div class="mx-auto mt-16 grid max-w-3xl gap-6 sm:grid-cols-3" data-reveal style="transition-delay: 220ms;">
