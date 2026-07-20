@@ -1,48 +1,118 @@
 import { useState, useMemo, useRef, type FormEvent } from 'react';
 
 type FormData = {
-  projectType: string;
-  goal: string;
-  budget: string;
   name: string;
+  serviceType: string;
+  serviceDetail: string;
+  serviceUrl: string;
+  targetAudience: string;
   email: string;
   phone: string;
-  message: string;
+  contactTime: string;
   privacyConsent: boolean;
 };
 
 const initialData: FormData = {
-  projectType: '',
-  goal: '',
-  budget: '',
   name: '',
+  serviceType: '',
+  serviceDetail: '',
+  serviceUrl: '',
+  targetAudience: '',
   email: '',
   phone: '',
-  message: '',
+  contactTime: '',
   privacyConsent: false,
 };
 
-const PROJECT_TYPES = [
+const SERVICE_TYPES = [
   { value: 'nuovo-sito', label: 'Un nuovo sito internet' },
-  { value: 'restyling', label: 'Restyling di un sito esistente' },
-  { value: 'seo', label: 'SEO e visibilità' },
-  { value: 'social', label: 'Gestione social' },
-  { value: 'altro', label: 'Altro / non sono sicuro' },
+  { value: 'consulenza-sito-esistente', label: 'Consulenza sul mio sito attuale' },
+  { value: 'seo', label: 'SEO e visibilità su Google' },
+  { value: 'social', label: 'Gestione dei social' },
+  { value: 'design', label: "Design e immagine del brand" },
+  { value: 'manutenzione', label: 'Manutenzione e assistenza' },
+  { value: 'altro', label: 'Non sono sicuro/a' },
 ];
 
-const GOALS = [
-  { value: 'piu-clienti', label: 'Trovare più clienti' },
-  { value: 'immagine', label: 'Migliorare la mia immagine online' },
-  { value: 'vendite', label: 'Vendere online' },
-  { value: 'presenza', label: 'Avere finalmente un sito' },
+const TARGET_AUDIENCE = [
+  { value: 'privati', label: 'Privati e famiglie' },
+  { value: 'aziende', label: 'Altre aziende (B2B)' },
+  { value: 'turisti', label: 'Turisti e visitatori' },
+  { value: 'misto', label: 'Un po’ di tutto' },
 ];
 
-const BUDGETS = [
-  { value: 'entro-1000', label: 'Fino a 1.000 €' },
-  { value: '1000-3000', label: '1.000 – 3.000 €' },
-  { value: '3000-plus', label: 'Oltre 3.000 €' },
-  { value: 'da-definire', label: 'Da definire insieme' },
+const CONTACT_TIME = [
+  { value: 'mattina', label: 'Mattina' },
+  { value: 'pomeriggio', label: 'Pomeriggio' },
+  { value: 'sera', label: 'Sera' },
+  { value: 'quando-capita', label: 'Quando capita' },
 ];
+
+// Domanda "su misura" in base al servizio scelto: cambia sia le opzioni che,
+// in un caso, aggiunge un campo di testo (link del sito) per farci un'idea
+// più precisa prima ancora di parlare direttamente col cliente.
+const BRANCH_QUESTIONS: Record<
+  string,
+  { question: string; hint?: string; options: { value: string; label: string }[]; withUrl?: boolean } | null
+> = {
+  'nuovo-sito': {
+    question: 'Che tipo di sito ti serve?',
+    options: [
+      { value: 'vetrina', label: 'Sito vetrina' },
+      { value: 'ecommerce', label: 'E-commerce' },
+      { value: 'blog', label: 'Blog / magazine' },
+      { value: 'non-so', label: 'Non so ancora' },
+    ],
+  },
+  'consulenza-sito-esistente': {
+    question: 'Qual è il problema principale che noti?',
+    hint: "Se vuoi, lascia anche il link del tuo sito qui sotto: ci diamo un'occhiata prima di sentirci.",
+    withUrl: true,
+    options: [
+      { value: 'lento', label: 'È lento' },
+      { value: 'vecchio', label: 'Ha un design vecchio' },
+      { value: 'pochi-clienti', label: 'Non porta clienti' },
+      { value: 'non-so', label: 'Non saprei dire' },
+    ],
+  },
+  seo: {
+    question: 'Oggi sei visibile su Google?',
+    options: [
+      { value: 'per-niente', label: 'Non compaio per niente' },
+      { value: 'in-fondo', label: 'Compaio, ma in fondo' },
+      { value: 'non-so', label: 'Non lo so' },
+      { value: 'migliorare', label: 'Sì, ma voglio migliorare' },
+    ],
+  },
+  social: {
+    question: 'Quali social ti interessano di più?',
+    options: [
+      { value: 'instagram', label: 'Instagram' },
+      { value: 'facebook', label: 'Facebook' },
+      { value: 'tiktok', label: 'TikTok' },
+      { value: 'non-deciso', label: 'Non ho ancora deciso' },
+    ],
+  },
+  design: {
+    question: "A che punto sei con l'immagine del tuo brand?",
+    options: [
+      { value: 'tutto-pronto', label: 'Ho già tutto pronto' },
+      { value: 'solo-logo', label: 'Ho solo il logo' },
+      { value: 'da-zero', label: 'Devo partire da zero' },
+      { value: 'non-so', label: 'Non sono sicuro/a' },
+    ],
+  },
+  manutenzione: {
+    question: 'Su che piattaforma è il tuo sito attuale?',
+    options: [
+      { value: 'wordpress', label: 'WordPress' },
+      { value: 'altra-piattaforma', label: "Un'altra piattaforma" },
+      { value: 'artigianale', label: 'Fatto "in casa" da qualcuno' },
+      { value: 'non-so', label: 'Non lo so' },
+    ],
+  },
+  altro: null,
+};
 
 function OptionGrid({
   options,
@@ -79,145 +149,189 @@ export default function ContactWizard() {
   const [data, setData] = useState<FormData>(initialData);
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
 
-  const steps = useMemo(
-    () => [
-      {
-        key: 'projectType',
-        question: 'Di cosa hai bisogno?',
-        render: () => (
-          <OptionGrid
-            options={PROJECT_TYPES}
-            value={data.projectType}
-            onSelect={(v) => {
-              setData((d) => ({ ...d, projectType: v }));
-              setStep((s) => s + 1);
-            }}
-          />
-        ),
-      },
-      {
-        key: 'goal',
-        question: 'Qual è il tuo obiettivo principale?',
-        render: () => (
-          <OptionGrid
-            options={GOALS}
-            value={data.goal}
-            onSelect={(v) => {
-              setData((d) => ({ ...d, goal: v }));
-              setStep((s) => s + 1);
-            }}
-          />
-        ),
-      },
-      {
-        key: 'budget',
-        question: 'Che budget indicativo hai in mente?',
-        render: () => (
-          <OptionGrid
-            options={BUDGETS}
-            value={data.budget}
-            onSelect={(v) => {
-              setData((d) => ({ ...d, budget: v }));
-              setStep((s) => s + 1);
-            }}
-          />
-        ),
-      },
-      {
-        key: 'contact',
-        question: 'Come possiamo ricontattarti?',
-        render: () => (
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="name" className="mb-1.5 block text-sm font-medium text-ink-700">
-                Nome e cognome *
-              </label>
-              <input
-                id="name"
-                name="name"
-                required
-                value={data.name}
-                onChange={(e) => setData((d) => ({ ...d, name: e.target.value }))}
-                className="w-full rounded-xl border border-ink-200 px-4 py-3 text-ink-900 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
-                placeholder="Mario Rossi"
-              />
-            </div>
-            <div>
-              <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-ink-700">
-                Email *
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                value={data.email}
-                onChange={(e) => setData((d) => ({ ...d, email: e.target.value }))}
-                className="w-full rounded-xl border border-ink-200 px-4 py-3 text-ink-900 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
-                placeholder="mario@esempio.it"
-              />
-            </div>
-            <div>
-              <label htmlFor="phone" className="mb-1.5 block text-sm font-medium text-ink-700">
-                Telefono (opzionale)
-              </label>
-              <input
-                id="phone"
-                name="phone"
-                value={data.phone}
-                onChange={(e) => setData((d) => ({ ...d, phone: e.target.value }))}
-                className="w-full rounded-xl border border-ink-200 px-4 py-3 text-ink-900 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
-                placeholder="+39 ..."
-              />
-            </div>
-            <div>
-              <label htmlFor="message" className="mb-1.5 block text-sm font-medium text-ink-700">
-                Vuoi aggiungere altro? (opzionale)
-              </label>
-              <textarea
-                id="message"
-                name="message"
-                value={data.message}
-                onChange={(e) => setData((d) => ({ ...d, message: e.target.value }))}
-                rows={3}
-                className="w-full rounded-xl border border-ink-200 px-4 py-3 text-ink-900 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
-                placeholder="Raccontaci qualcosa in più sul tuo progetto..."
-              />
-            </div>
+  const firstName = data.name.trim().split(' ')[0];
+  const branch = BRANCH_QUESTIONS[data.serviceType] ?? null;
 
-            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-ink-200 p-4 text-sm text-ink-600">
-              <input
-                type="checkbox"
-                required
-                checked={data.privacyConsent}
-                onChange={(e) => setData((d) => ({ ...d, privacyConsent: e.target.checked }))}
-                className="mt-0.5 h-5 w-5 shrink-0 accent-[#ed7d31]"
-              />
-              <span>
-                Ho letto l'<a href="/privacy-policy" target="_blank" className="font-medium text-brand-600 hover:underline">informativa privacy</a> e
-                acconsento al trattamento dei miei dati per essere ricontattato/a. *
-              </span>
-            </label>
+  // Sequenza di step: nome -> servizio -> [domanda su misura, se presente] -> pubblico -> contatti
+  const steps = useMemo(() => {
+    const list: { key: string; render: () => any }[] = [
+      {
+        key: 'name',
+        render: () => (
+          <div>
+            <input
+              autoFocus
+              value={data.name}
+              onChange={(e) => setData((d) => ({ ...d, name: e.target.value }))}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && data.name.trim()) setStep((s) => s + 1);
+              }}
+              className="w-full rounded-xl border border-ink-200 px-4 py-3 text-lg text-ink-900 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+              placeholder="Il tuo nome"
+            />
+            <button
+              type="button"
+              disabled={!data.name.trim()}
+              onClick={() => setStep((s) => s + 1)}
+              className="btn-primary mt-4 w-full disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Continua
+            </button>
           </div>
         ),
       },
-    ],
-    [data]
-  );
+      {
+        key: 'serviceType',
+        render: () => (
+          <OptionGrid
+            options={SERVICE_TYPES}
+            value={data.serviceType}
+            onSelect={(v) => {
+              setData((d) => ({ ...d, serviceType: v, serviceDetail: '', serviceUrl: '' }));
+              setStep((s) => s + 1);
+            }}
+          />
+        ),
+      },
+    ];
+
+    if (branch) {
+      list.push({
+        key: 'branch',
+        render: () => (
+          <div>
+            <OptionGrid
+              options={branch.options}
+              value={data.serviceDetail}
+              onSelect={(v) => setData((d) => ({ ...d, serviceDetail: v }))}
+            />
+            {branch.withUrl && (
+              <input
+                name="serviceUrl"
+                value={data.serviceUrl}
+                onChange={(e) => setData((d) => ({ ...d, serviceUrl: e.target.value }))}
+                className="mt-4 w-full rounded-xl border border-ink-200 px-4 py-3 text-ink-900 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+                placeholder="Link del tuo sito (facoltativo)"
+              />
+            )}
+            <button
+              type="button"
+              disabled={!data.serviceDetail}
+              onClick={() => setStep((s) => s + 1)}
+              className="btn-primary mt-4 w-full disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Continua
+            </button>
+          </div>
+        ),
+      });
+    }
+
+    list.push({
+      key: 'targetAudience',
+      render: () => (
+        <OptionGrid
+          options={TARGET_AUDIENCE}
+          value={data.targetAudience}
+          onSelect={(v) => {
+            setData((d) => ({ ...d, targetAudience: v }));
+            setStep((s) => s + 1);
+          }}
+        />
+      ),
+    });
+
+    list.push({
+      key: 'contact',
+      render: () => (
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-ink-700">
+              Email *
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              required
+              value={data.email}
+              onChange={(e) => setData((d) => ({ ...d, email: e.target.value }))}
+              className="w-full rounded-xl border border-ink-200 px-4 py-3 text-ink-900 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+              placeholder="mario@esempio.it"
+            />
+          </div>
+          <div>
+            <label htmlFor="phone" className="mb-1.5 block text-sm font-medium text-ink-700">
+              Telefono (facoltativo)
+            </label>
+            <input
+              id="phone"
+              name="phone"
+              value={data.phone}
+              onChange={(e) => setData((d) => ({ ...d, phone: e.target.value }))}
+              className="w-full rounded-xl border border-ink-200 px-4 py-3 text-ink-900 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+              placeholder="+39 ..."
+            />
+          </div>
+
+          <div>
+            <p className="mb-1.5 text-sm font-medium text-ink-700">Quando preferisci essere ricontattato/a?</p>
+            <OptionGrid options={CONTACT_TIME} value={data.contactTime} onSelect={(v) => setData((d) => ({ ...d, contactTime: v }))} />
+          </div>
+
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-ink-200 p-4 text-sm text-ink-600">
+            <input
+              type="checkbox"
+              required
+              checked={data.privacyConsent}
+              onChange={(e) => setData((d) => ({ ...d, privacyConsent: e.target.checked }))}
+              className="mt-0.5 h-5 w-5 shrink-0 accent-[#ed7d31]"
+            />
+            <span>
+              Ho letto l'<a href="/privacy-policy" target="_blank" className="font-medium text-brand-600 hover:underline">informativa privacy</a> e
+              acconsento al trattamento dei miei dati per essere ricontattato/a. *
+            </span>
+          </label>
+        </div>
+      ),
+    });
+
+    return list;
+  }, [data, branch]);
 
   const isLastStep = step === steps.length - 1;
   const progress = Math.round(((step + 1) / steps.length) * 100);
 
+  // Domanda mostrata sopra ogni step, personalizzata quando possibile.
+  const stepTitle = (() => {
+    const key = steps[step]?.key;
+    switch (key) {
+      case 'name':
+        return 'Come ti chiami?';
+      case 'serviceType':
+        return `Piacere${firstName ? `, ${firstName}` : ''}! Di cosa hai bisogno?`;
+      case 'branch':
+        return branch?.question ?? '';
+      case 'targetAudience':
+        return 'A chi vuoi rivolgerti principalmente?';
+      case 'contact':
+        return 'Come possiamo ricontattarti?';
+      default:
+        return '';
+    }
+  })();
+
+  const stepHint = steps[step]?.key === 'branch' ? branch?.hint : undefined;
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!data.name || !data.email || !data.privacyConsent || !formRef.current) return;
+    if (!data.email || !data.privacyConsent || !data.contactTime || !formRef.current) return;
 
     setStatus('submitting');
     try {
-      // Costruiamo il body leggendo direttamente i campi presenti nel form nel DOM
-      // (inclusi i campi nascosti sincronizzati con lo stato più sotto), invece di
-      // fidarci solo dello stato React: così siamo sicuri che quello che vediamo
-      // sullo schermo sia esattamente quello che viene inviato a Netlify.
+      // Leggiamo i dati direttamente dal form nel DOM (inclusi i campi nascosti
+      // sincronizzati con lo stato qui sotto): così siamo sicuri che quello che
+      // vediamo sullo schermo sia esattamente quello che viene inviato a Netlify.
       const formData = new FormData(formRef.current);
       const body = new URLSearchParams(formData as any).toString();
 
@@ -245,7 +359,9 @@ export default function ContactWizard() {
           </svg>
         </div>
         <h3 className="mt-4 font-display text-xl font-semibold text-ink-900">Richiesta inviata!</h3>
-        <p className="mt-2 text-ink-600">Grazie {data.name.split(' ')[0]}, ti ricontatteremo entro 24 ore lavorative.</p>
+        <p className="mt-2 text-ink-600">
+          Grazie{firstName ? ` ${firstName}` : ''}, ti ricontattiamo {data.contactTime === 'quando-capita' ? 'appena possibile' : `nella fascia "${CONTACT_TIME.find((c) => c.value === data.contactTime)?.label.toLowerCase()}"`} entro 24 ore lavorative.
+        </p>
       </div>
     );
   }
@@ -268,13 +384,18 @@ export default function ContactWizard() {
         </label>
       </p>
 
-      {/* Campi delle scelte a bottoni (step 1-3): non hanno un <input> visibile,
-          quindi li teniamo sincronizzati qui come hidden, sempre presenti nel DOM
-          del form reale, così finiscono sempre nella FormData inviata. */}
-      <input type="hidden" name="projectType" value={data.projectType} />
-      <input type="hidden" name="goal" value={data.goal} />
-      <input type="hidden" name="budget" value={data.budget} />
+      {/* Campi guidati da bottoni: non hanno un <input> visibile, quindi li
+          teniamo sincronizzati qui come hidden, sempre presenti nel DOM del
+          form reale, così finiscono sempre nella FormData inviata. */}
+      <input type="hidden" name="name" value={data.name} />
+      <input type="hidden" name="serviceType" value={data.serviceType} />
+      <input type="hidden" name="serviceDetail" value={data.serviceDetail} />
+      <input type="hidden" name="targetAudience" value={data.targetAudience} />
+      <input type="hidden" name="contactTime" value={data.contactTime} />
       <input type="hidden" name="privacyConsent" value={data.privacyConsent ? 'true' : 'false'} />
+      {/* serviceUrl ha già un input reale quando il branch lo prevede; qui il
+          fallback nascosto copre i casi in cui quello step non viene mostrato. */}
+      {!branch?.withUrl && <input type="hidden" name="serviceUrl" value={data.serviceUrl} />}
 
       <div className="mb-8 flex items-center gap-3">
         <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-ink-100">
@@ -288,7 +409,8 @@ export default function ContactWizard() {
         </span>
       </div>
 
-      <h3 className="font-display text-xl font-semibold text-ink-900 sm:text-2xl">{steps[step].question}</h3>
+      <h3 className="font-display text-xl font-semibold text-ink-900 sm:text-2xl">{stepTitle}</h3>
+      {stepHint && <p className="mt-1.5 text-sm text-ink-500">{stepHint}</p>}
 
       <div className="mt-6">{steps[step].render()}</div>
 
@@ -304,7 +426,7 @@ export default function ContactWizard() {
         {isLastStep && (
           <button
             type="submit"
-            disabled={status === 'submitting' || !data.privacyConsent}
+            disabled={status === 'submitting' || !data.privacyConsent || !data.contactTime}
             className="btn-primary disabled:cursor-not-allowed disabled:opacity-50"
           >
             {status === 'submitting' ? 'Invio in corso…' : 'Invia richiesta'}

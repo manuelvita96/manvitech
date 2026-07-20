@@ -3,6 +3,9 @@ import HeroIllustration from '../illustrations/HeroIllustration.astro';
 ---
 
 <section class="relative overflow-hidden pt-16 pb-20 sm:pt-20 sm:pb-28">
+  <!-- Sfondo interattivo: griglia di punti che reagisce al movimento del cursore -->
+  <canvas id="hero-canvas" class="pointer-events-none absolute inset-0 h-full w-full opacity-70" aria-hidden="true"></canvas>
+
   <!-- Blob decorativo organico, sfumato tra i colori del brand -->
   <div
     aria-hidden="true"
@@ -63,3 +66,107 @@ import HeroIllustration from '../illustrations/HeroIllustration.astro';
     </div>
   </div>
 </section>
+
+<script>
+  // Sfondo interattivo nell'hero: una griglia di punti che si "allontanano"
+  // leggermente dal cursore, per un effetto sottile ma memorabile.
+  function initHeroCanvas() {
+    const canvas = document.getElementById('hero-canvas') as HTMLCanvasElement | null;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const section = canvas.closest('section') as HTMLElement;
+    let width = 0;
+    let height = 0;
+    let dots: { x: number; y: number; baseX: number; baseY: number }[] = [];
+    let mouse = { x: -9999, y: -9999 };
+    let raf = 0;
+    let running = false;
+
+    const SPACING = 42;
+    const RADIUS = 90;
+
+    function resize() {
+      width = canvas.width = section.offsetWidth * devicePixelRatio;
+      height = canvas.height = section.offsetHeight * devicePixelRatio;
+      canvas.style.width = `${section.offsetWidth}px`;
+      canvas.style.height = `${section.offsetHeight}px`;
+
+      dots = [];
+      const cols = Math.ceil(width / (SPACING * devicePixelRatio));
+      const rows = Math.ceil(height / (SPACING * devicePixelRatio));
+      for (let i = 0; i <= cols; i++) {
+        for (let j = 0; j <= rows; j++) {
+          const x = i * SPACING * devicePixelRatio;
+          const y = j * SPACING * devicePixelRatio;
+          dots.push({ x, y, baseX: x, baseY: y });
+        }
+      }
+    }
+
+    function draw() {
+      ctx!.clearRect(0, 0, width, height);
+      const r = RADIUS * devicePixelRatio;
+
+      for (const dot of dots) {
+        const dx = dot.baseX - mouse.x;
+        const dy = dot.baseY - mouse.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < r) {
+          const force = (1 - dist / r) * 14 * devicePixelRatio;
+          const angle = Math.atan2(dy, dx);
+          dot.x = dot.baseX + Math.cos(angle) * force;
+          dot.y = dot.baseY + Math.sin(angle) * force;
+        } else {
+          dot.x += (dot.baseX - dot.x) * 0.12;
+          dot.y += (dot.baseY - dot.y) * 0.12;
+        }
+
+        const closeness = Math.max(0, 1 - dist / r);
+        const size = (1.4 + closeness * 1.8) * devicePixelRatio;
+        ctx!.beginPath();
+        ctx!.arc(dot.x, dot.y, size, 0, Math.PI * 2);
+        ctx!.fillStyle = closeness > 0 ? `rgba(237, 125, 49, ${0.25 + closeness * 0.5})` : 'rgba(123, 123, 123, 0.16)';
+        ctx!.fill();
+      }
+
+      raf = requestAnimationFrame(draw);
+    }
+
+    function start() {
+      if (running) return;
+      running = true;
+      raf = requestAnimationFrame(draw);
+    }
+    function stop() {
+      running = false;
+      cancelAnimationFrame(raf);
+    }
+
+    resize();
+    start();
+
+    window.addEventListener('resize', resize);
+    section.addEventListener('mousemove', (e) => {
+      const rect = section.getBoundingClientRect();
+      mouse.x = (e.clientX - rect.left) * devicePixelRatio;
+      mouse.y = (e.clientY - rect.top) * devicePixelRatio;
+    });
+    section.addEventListener('mouseleave', () => {
+      mouse.x = -9999;
+      mouse.y = -9999;
+    });
+
+    // Ferma l'animazione quando l'hero non è visibile (risparmio risorse)
+    new IntersectionObserver(([entry]) => {
+      entry.isIntersecting ? start() : stop();
+    }).observe(section);
+  }
+
+  initHeroCanvas();
+  document.addEventListener('astro:page-load', initHeroCanvas);
+</script>
