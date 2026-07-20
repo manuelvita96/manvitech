@@ -325,15 +325,28 @@ export default function ContactWizard() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!data.email || !data.privacyConsent || !data.contactTime || !formRef.current) return;
+    if (!data.email || !data.privacyConsent || !data.contactTime) return;
 
     setStatus('submitting');
     try {
-      // Leggiamo i dati direttamente dal form nel DOM (inclusi i campi nascosti
-      // sincronizzati con lo stato qui sotto): così siamo sicuri che quello che
-      // vediamo sullo schermo sia esattamente quello che viene inviato a Netlify.
-      const formData = new FormData(formRef.current);
-      const body = new URLSearchParams(formData as any).toString();
+      // Costruiamo il body direttamente dallo stato del form (aggiornato ad
+      // ogni digitazione/selezione): è la fonte più affidabile, perché in un
+      // form a più step nel DOM in un dato momento sono montati solo i campi
+      // dello step corrente, mentre lo stato conserva sempre tutti i dati
+      // raccolti nei passaggi precedenti.
+      const payload: Record<string, string> = {
+        'form-name': 'richiesta-preventivo',
+        name: data.name,
+        serviceType: data.serviceType,
+        serviceDetail: data.serviceDetail,
+        serviceUrl: data.serviceUrl,
+        targetAudience: data.targetAudience,
+        email: data.email,
+        phone: data.phone,
+        contactTime: data.contactTime,
+        privacyConsent: data.privacyConsent ? 'true' : 'false',
+      };
+      const body = new URLSearchParams(payload).toString();
 
       const res = await fetch(window.location.pathname, {
         method: 'POST',
