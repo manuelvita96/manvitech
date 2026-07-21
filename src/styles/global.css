@@ -1,0 +1,147 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+@import "@fontsource-variable/space-grotesk";
+@import "@fontsource-variable/inter";
+
+@theme {
+  /* Brand: arancione e grigio del logo manvitech */
+  --color-brand-50: #fff4ec;
+  --color-brand-100: #ffe4cf;
+  --color-brand-200: #ffc79a;
+  --color-brand-300: #ffa35e;
+  --color-brand-400: #f68a3c;
+  --color-brand-500: #ed7d31; /* colore esatto del logo */
+  --color-brand-600: #d4631c;
+  --color-brand-700: #b04c16;
+  --color-brand-800: #8c3d18;
+  --color-brand-900: #723318;
+
+  --color-ink-50: #f7f7f7;
+  --color-ink-100: #ececec;
+  --color-ink-200: #d8d8d8;
+  --color-ink-300: #b8b8b8;
+  --color-ink-400: #7b7b7b; /* grigio esatto del logo */
+  --color-ink-500: #636363;
+  --color-ink-600: #4c4c4c;
+  --color-ink-700: #3a3a3a;
+  --color-ink-800: #262626;
+  --color-ink-900: #171717;
+  --color-ink-950: #0d0d0d;
+
+  /* Accento secondario per i gradient organici (complementare caldo) */
+  --color-accent-400: #ff5c7a;
+  --color-accent-500: #f0396a;
+
+  --font-display: "Space Grotesk Variable", "Space Grotesk", sans-serif;
+  --font-sans: "Inter Variable", "Inter", system-ui, sans-serif;
+
+  --radius-blob: 42% 58% 65% 35% / 45% 40% 60% 55%;
+
+  --shadow-glow: 0 8px 40px -8px rgb(237 125 49 / 0.35);
+  --shadow-card: 0 2px 8px rgb(23 23 23 / 0.04), 0 12px 32px -8px rgb(23 23 23 / 0.08);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    color: var(--color-ink-800);
+    background-color: #ffffff;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+
+  ::selection {
+    background-color: var(--color-brand-200);
+    color: var(--color-ink-900);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-7xl px-5 sm:px-8 lg:px-10;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3.5 text-sm font-semibold
+           text-white transition-all duration-200 ease-out;
+    background: linear-gradient(135deg, var(--color-brand-500), var(--color-accent-500));
+    box-shadow: var(--shadow-glow);
+  }
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 48px -8px rgb(237 125 49 / 0.5);
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-ink-200 bg-white/70 px-6 py-3.5
+           text-sm font-semibold text-ink-700 backdrop-blur transition-all duration-200 ease-out;
+  }
+  .btn-ghost:hover {
+    @apply border-brand-300 bg-brand-50 text-brand-600;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white/80 px-3.5 py-1.5
+           text-xs font-semibold uppercase tracking-wide text-ink-500 backdrop-blur;
+  }
+
+  .prose-article {
+    @apply prose prose-neutral max-w-none prose-headings:font-display prose-headings:tracking-tight
+           prose-a:text-brand-600 prose-a:no-underline hover:prose-a:underline
+           prose-img:rounded-2xl prose-strong:text-ink-900;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    background: linear-gradient(135deg, var(--color-brand-500), var(--color-accent-500));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .blob {
+    border-radius: var(--radius-blob);
+  }
+
+  /* Animazioni allo scroll: elementi con [data-reveal] partono nascosti
+     e vengono rivelati via JS (vedi script in Layout.astro) quando entrano nel viewport. */
+  [data-reveal] {
+    opacity: 0;
+    transform: translateY(28px);
+    transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  [data-reveal].is-visible {
+    opacity: 1;
+    transform: none;
+  }
+  [data-reveal="scale"] {
+    transform: scale(0.94);
+  }
+  [data-reveal="scale"].is-visible {
+    transform: scale(1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-reveal] {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+  }
+}

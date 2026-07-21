@@ -1,0 +1,74 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import { getCollection, render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog', ({ data }) => !data.draft);
+  return posts.map((post) => ({
+    params: { slug: post.id },
+    props: { post },
+  }));
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+
+const dateFormatter = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: post.data.title,
+  description: post.data.description,
+  datePublished: post.data.pubDate.toISOString(),
+  dateModified: (post.data.updatedDate ?? post.data.pubDate).toISOString(),
+  author: { '@type': 'Organization', name: post.data.author },
+  publisher: { '@id': 'https://manvitech.it/#organization' },
+  mainEntityOfPage: new URL(`/blog/${post.id}`, 'https://manvitech.it').toString(),
+  inLanguage: 'it-IT',
+};
+---
+
+<Layout
+  title={post.data.title}
+  description={post.data.description}
+  type="article"
+  publishedTime={post.data.pubDate.toISOString()}
+  modifiedTime={(post.data.updatedDate ?? post.data.pubDate).toISOString()}
+  jsonLd={jsonLd}
+>
+  <Breadcrumbs items={[{ label: 'Blog', href: '/blog' }, { label: post.data.title, href: `/blog/${post.id}` }]} />
+  <article class="container-page py-10 sm:py-14">
+    <div class="mx-auto max-w-2xl">
+      <span class="badge">{post.data.category}</span>
+      <h1 class="mt-4 text-3xl font-bold leading-tight tracking-tight text-ink-900 sm:text-4xl">
+        {post.data.title}
+      </h1>
+
+      <div class="mt-5 flex items-center gap-3 text-sm text-ink-400">
+        <span>{post.data.author}</span>
+        <span aria-hidden="true">·</span>
+        <time datetime={post.data.pubDate.toISOString()}>{dateFormatter.format(post.data.pubDate)}</time>
+      </div>
+
+      <div class="prose-article mt-10">
+        <Content />
+      </div>
+
+      {post.data.tags.length > 0 && (
+        <div class="mt-12 flex flex-wrap gap-2 border-t border-ink-100 pt-6">
+          {post.data.tags.map((tag) => (
+            <span class="rounded-full bg-ink-50 px-3 py-1 text-xs font-medium text-ink-500">#{tag}</span>
+          ))}
+        </div>
+      )}
+
+      <div class="mt-8 flex flex-wrap items-center gap-3 rounded-2xl border border-ink-100 bg-ink-50/60 p-5">
+        <p class="text-sm text-ink-500">Ti serve una mano concreta su questo argomento?</p>
+        <a href="/servizi" class="text-sm font-semibold text-brand-600 hover:underline">Guarda i nostri servizi →</a>
+        <a href="/contatti" class="text-sm font-semibold text-brand-600 hover:underline">Scrivici →</a>
+      </div>
+    </div>
+  </article>
+</Layout>

@@ -1,0 +1,57 @@
+---
+---
+
+<svg viewBox="0 0 480 380" fill="none" xmlns="http://www.w3.org/2000/svg" class="h-auto w-full" role="img" aria-label="Illustrazione di un grafico di crescita con elementi decorativi">
+  <defs>
+    <linearGradient id="grow-grad-1" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#ED7D31" />
+      <stop offset="1" stop-color="#F0396A" />
+    </linearGradient>
+    <linearGradient id="grow-grad-2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFC79A" />
+      <stop offset="1" stop-color="#ED7D31" />
+    </linearGradient>
+    <filter id="grow-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#171717" flood-opacity="0.12" />
+    </filter>
+  </defs>
+
+  <path class="grow-float-slow" d="M50 100C90 40 200 20 270 60C340 100 420 90 440 170C460 250 400 310 320 320C240 330 180 360 110 330C40 300 20 230 30 170C35 140 30 130 50 100Z" fill="url(#grow-grad-2)" opacity="0.15" />
+
+  <g filter="url(#grow-shadow)">
+    <rect x="60" y="90" width="360" height="220" rx="20" fill="white" />
+    <rect x="90" y="230" width="34" height="60" rx="6" fill="#ECECEC" />
+    <rect x="140" y="200" width="34" height="90" rx="6" fill="#ECECEC" />
+    <rect x="190" y="160" width="34" height="130" rx="6" fill="#D8D8D8" />
+    <rect x="240" y="190" width="34" height="100" rx="6" fill="#ECECEC" />
+    <rect x="290" y="140" width="34" height="150" rx="6" fill="url(#grow-grad-1)" />
+    <rect x="340" y="110" width="34" height="180" rx="6" fill="url(#grow-grad-1)" opacity="0.85" />
+
+    <path d="M95 220 L155 190 L205 150 L255 180 L305 130 L355 100" stroke="#ED7D31" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.9" />
+    <circle cx="355" cy="100" r="7" fill="#F0396A" />
+  </g>
+
+  <g class="grow-float">
+    <circle cx="430" cy="70" r="24" fill="url(#grow-grad-1)" />
+    <path d="M420 70l7 7 12-14" stroke="white" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  </g>
+
+  <g class="grow-float-delayed">
+    <rect x="20" y="60" width="56" height="56" rx="16" fill="white" filter="url(#grow-shadow)" />
+    <path d="M35 88a12 12 0 1 1 24 0" stroke="#ED7D31" stroke-width="3.5" stroke-linecap="round" fill="none" />
+    <circle cx="47" cy="70" r="7" fill="#ED7D31" opacity="0.8" />
+  </g>
+
+  <circle class="grow-float-slow" cx="440" cy="330" r="10" fill="#F0396A" opacity="0.5" />
+  <circle class="grow-float-slow" cx="30" cy="330" r="8" fill="#ED7D31" opacity="0.4" />
+</svg>
+
+<style>
+  .grow-float { animation: grow-float 5s ease-in-out infinite; transform-origin: center; }
+  .grow-float-delayed { animation: grow-float 6.5s ease-in-out infinite; animation-delay: 0.6s; transform-origin: center; }
+  .grow-float-slow { animation: grow-float 8s ease-in-out infinite; animation-delay: 0.2s; transform-origin: center; }
+  @keyframes grow-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+  @media (prefers-reduced-motion: reduce) {
+    .grow-float, .grow-float-delayed, .grow-float-slow { animation: none; }
+  }
+</style>

@@ -1,0 +1,58 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import { getCollection } from 'astro:content';
+
+const allZones = await getCollection('local-seo', ({ data }) => !data.draft);
+const cities = allZones
+  .filter((z) => z.data.pageType === 'city')
+  .sort((a, b) => (a.data.distanceKm ?? 999) - (b.data.distanceKm ?? 999));
+const areas = allZones.filter((z) => z.data.pageType === 'area');
+---
+
+<Layout
+  title="Dove operiamo"
+  description="Manvitech realizza siti internet e strategie SEO per attività in tutta la zona di Fucecchio, dall'Empolese al Valdarno inferiore, dalla Valdinievole alla Valdera."
+>
+  <Breadcrumbs items={[{ label: 'Dove operiamo', href: '/zone' }]} />
+  <section class="container-page py-10 sm:py-14">
+    <div class="mx-auto max-w-2xl text-center" data-reveal>
+      <span class="badge">Presenza locale</span>
+      <h1 class="mt-4 text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl">Dove operiamo</h1>
+      <p class="mt-4 text-ink-500">
+        Siamo di base a Fucecchio e lavoriamo con attività in tutta la zona: dai comuni limitrofi
+        fino a un raggio di circa 50 km, tra Empolese-Valdelsa, Valdinievole e Valdera.
+      </p>
+    </div>
+
+    {cities.length > 0 && (
+      <div class="mt-14" data-reveal>
+        <h2 class="font-display text-xl font-semibold text-ink-900">I comuni dove lavoriamo di più</h2>
+        <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {cities.map((zone) => (
+            <a href={`/zone/${zone.id}`} class="rounded-2xl border border-ink-100 bg-white p-6 hover:border-brand-300 hover:bg-brand-50/40" style="box-shadow: var(--shadow-card);">
+              <h3 class="font-display text-lg font-semibold text-ink-900">{zone.data.city}</h3>
+              {zone.data.distanceKm != null && (
+                <p class="mt-1 text-sm text-ink-400">{zone.data.distanceKm} km da Fucecchio</p>
+              )}
+            </a>
+          ))}
+        </div>
+      </div>
+    )}
+
+    {areas.length > 0 && (
+      <div class="mt-14" data-reveal>
+        <h2 class="font-display text-xl font-semibold text-ink-900">E anche in queste zone</h2>
+        <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {areas.map((zone) => (
+            <a href={`/zone/${zone.id}`} class="rounded-2xl border border-ink-100 bg-white p-6 hover:border-brand-300 hover:bg-brand-50/40" style="box-shadow: var(--shadow-card);">
+              <h3 class="font-display text-lg font-semibold text-ink-900">{zone.data.city}</h3>
+              <p class="mt-1 text-xs text-ink-400">{zone.data.nearbyTowns.slice(0, 3).join(', ')}{zone.data.nearbyTowns.length > 3 ? '…' : ''}</p>
+            </a>
+          ))}
+        </div>
+      </div>
+    )}
+  </section>
+</Layout>

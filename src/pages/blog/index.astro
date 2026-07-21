@@ -1,0 +1,63 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import { getCollection } from 'astro:content';
+
+const allPosts = await getCollection('blog', ({ data }) => !data.draft);
+const posts = allPosts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const dateFormatter = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Blog',
+  name: 'Blog Manvitech',
+  url: 'https://manvitech.it/blog',
+  inLanguage: 'it-IT',
+};
+---
+
+<Layout
+  title="Blog"
+  description="Consigli, guide e novità su siti internet, SEO e social media marketing per far crescere la tua attività online."
+  jsonLd={jsonLd}
+>
+  <Breadcrumbs items={[{ label: 'Blog', href: '/blog' }]} />
+  <section class="container-page py-16 sm:py-24">
+    <div class="mx-auto max-w-2xl text-center">
+      <span class="badge">Il nostro blog</span>
+      <h1 class="mt-4 text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl">
+        Guide e consigli pratici
+      </h1>
+      <p class="mt-4 text-ink-500">
+        Approfondimenti su siti internet, SEO e presenza online, scritti per essere utili prima che perfetti.
+      </p>
+    </div>
+
+    {posts.length === 0 ? (
+      <p class="mt-16 text-center text-ink-400">Presto nuovi articoli. Torna a trovarci!</p>
+    ) : (
+      <div class="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {posts.map((post) => (
+          <a
+            href={`/blog/${post.id}`}
+            class="group flex flex-col overflow-hidden rounded-3xl bg-white transition-all duration-300 hover:-translate-y-1"
+            style="box-shadow: var(--shadow-card);"
+          >
+            <div class="aspect-[16/10] w-full bg-gradient-to-br from-brand-100 to-accent-400/20"></div>
+            <div class="flex flex-1 flex-col p-6">
+              <span class="text-xs font-semibold uppercase tracking-wide text-brand-600">{post.data.category}</span>
+              <h2 class="mt-2 font-display text-lg font-semibold leading-snug text-ink-900 group-hover:text-brand-600">
+                {post.data.title}
+              </h2>
+              <p class="mt-2 line-clamp-3 text-sm text-ink-500">{post.data.description}</p>
+              <time datetime={post.data.pubDate.toISOString()} class="mt-4 text-xs text-ink-400">
+                {dateFormatter.format(post.data.pubDate)}
+              </time>
+            </div>
+          </a>
+        ))}
+      </div>
+    )}
+  </section>
+</Layout>

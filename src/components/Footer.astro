@@ -1,0 +1,92 @@
+---
+const year = new Date().getFullYear();
+
+const columns = [
+  {
+    title: 'Servizi',
+    links: [
+      { label: 'Siti internet', href: '/servizi/siti-internet' },
+      { label: 'SEO', href: '/servizi/seo' },
+      { label: 'Consulenza sito esistente', href: '/servizi/consulenza-sito-esistente' },
+      { label: 'Social media', href: '/servizi/social' },
+      { label: 'Design', href: '/servizi/design' },
+      { label: 'Manutenzione', href: '/servizi/manutenzione-e-assistenza' },
+    ],
+  },
+  {
+    title: 'Azienda',
+    links: [
+      { label: 'Chi siamo', href: '/chi-siamo' },
+      { label: 'Blog', href: '/blog' },
+      { label: 'Contatti', href: '/contatti' },
+    ],
+  },
+  {
+    title: 'Legale',
+    links: [
+      { label: 'Privacy policy', href: '/privacy-policy' },
+      { label: 'Cookie policy', href: '/cookie-policy' },
+      { label: 'Termini e condizioni', href: '/termini-e-condizioni' },
+      { label: 'Impressum', href: '/impressum' },
+      { label: 'Mappa del sito', href: '/mappa-del-sito' },
+    ],
+  },
+];
+---
+
+<footer class="border-t border-ink-100 bg-ink-950 text-ink-300">
+  <div class="container-page py-16">
+    <div class="grid grid-cols-2 gap-10 sm:grid-cols-4">
+      <div class="col-span-2">
+        <img src="/images/logo.png" alt="Manvitech" class="h-8 w-auto" />
+        <p class="mt-4 max-w-xs text-sm leading-relaxed text-ink-400">
+          Siti internet, SEO e presenza social per chi vuole farsi notare online.
+        </p>
+        <div class="mt-5 flex gap-3">
+          <a href="https://facebook.com/manvitech" aria-label="Facebook" class="footer-social">FB</a>
+          <a href="https://instagram.com/manvitech" aria-label="Instagram" class="footer-social">IG</a>
+          <a href="https://g.page/manvitech" aria-label="Google" class="footer-social">G</a>
+        </div>
+      </div>
+
+      {columns.map((col) => (
+        <div>
+          <h3 class="font-display text-sm font-semibold text-white">{col.title}</h3>
+          <ul class="mt-4 space-y-2.5">
+            {col.links.map((link) => (
+              <li>
+                <a href={link.href} class="text-sm text-ink-400 transition-colors hover:text-brand-400">
+                  {link.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+
+    <div class="mt-14 flex flex-col gap-3 border-t border-ink-800 pt-6 text-xs text-ink-500 sm:flex-row sm:items-center sm:justify-between">
+      <p>Fatto con ❤️ a Fucecchio — &copy; {year} Manvitech</p>
+      <div class="flex items-center gap-4">
+        <button type="button" id="footer-cookie-prefs" class="underline decoration-dotted hover:text-brand-400">
+          Preferenze cookie
+        </button>
+        <p>P.IVA 06983450484</p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  document.getElementById('footer-cookie-prefs')?.addEventListener('click', () => {
+    window.dispatchEvent(new CustomEvent('manvitech:open-cookie-prefs'));
+  });
+</script>
+
+<style>
+  @reference "../styles/global.css";
+  .footer-social {
+    @apply flex h-9 w-9 items-center justify-center rounded-full border border-ink-700 text-xs font-semibold
+           text-ink-300 transition-colors hover:border-brand-500 hover:text-brand-400;
+  }
+</style>
