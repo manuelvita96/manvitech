@@ -1,0 +1,18 @@
+---
+// Tag hreflang: dicono a Google quali pagine sono versioni in altre lingue
+// della stessa homepage, cosicché mostri agli utenti quella nella lingua giusta.
+// Da inserire (nello slot "head" del Layout) solo sulle pagine che hanno
+// davvero una versione equivalente nelle altre lingue elencate qui sotto.
+const languages = [
+  { code: 'it', href: 'https://manvitech.it/' },
+  { code: 'en', href: 'https://manvitech.it/en' },
+  { code: 'de', href: 'https://manvitech.it/de' },
+  { code: 'fr', href: 'https://manvitech.it/fr' },
+  { code: 'zh-Hans', href: 'https://manvitech.it/zh' },
+];
+---
+
+{languages.map((lang) => (
+  <link rel="alternate" hreflang={lang.code} href={lang.href} />
+))}
+<link rel="alternate" hreflang="x-default" href="https://manvitech.it/" />

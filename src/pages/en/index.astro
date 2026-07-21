@@ -1,5 +1,6 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import HreflangLinks from '../../components/HreflangLinks.astro';
 
 // Landing page EN indipendente (non un sito tradotto integralmente):
 // pensata per intercettare ricerche in inglese e presentare l'azienda,
@@ -7,9 +8,11 @@ import Layout from '../../layouts/Layout.astro';
 ---
 
 <Layout
+  lang="en"
   title="Manvitech — Websites, SEO & Social Marketing (Italy)"
   description="Manvitech designs fast, modern websites and SEO strategies for businesses in Italy. Get in touch to discuss your project."
 >
+  <HreflangLinks slot="head" />
   <section class="container-page py-20 sm:py-28">
     <div class="mx-auto max-w-2xl text-center">
       <span class="badge">Italian web agency</span>

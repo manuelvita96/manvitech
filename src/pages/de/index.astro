@@ -1,5 +1,6 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import HreflangLinks from '../../components/HreflangLinks.astro';
 
 // Landing page DE indipendente (non un sito tradotto integralmente):
 // pensata per intercettare ricerche in tedesco da turisti e clienti
@@ -7,9 +8,11 @@ import Layout from '../../layouts/Layout.astro';
 ---
 
 <Layout
+  lang="de"
   title="Manvitech — Webseiten, SEO & Social Media (Toskana, Italien)"
   description="Manvitech gestaltet schnelle, moderne Webseiten und SEO-Strategien für Unternehmen in der Toskana, in der Nähe von Fucecchio, San Miniato und Vinci."
 >
+  <HreflangLinks slot="head" />
   <section class="container-page py-20 sm:py-28">
     <div class="mx-auto max-w-2xl text-center">
       <span class="badge">Webagentur in der Toskana</span>
