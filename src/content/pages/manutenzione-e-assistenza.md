@@ -3,6 +3,13 @@ title: "Manutenzione e assistenza"
 description: "Il sito non finisce il giorno del lancio. Ci pensiamo noi ad aggiornamenti, controlli e piccole modifiche, così tu non devi preoccupartene."
 icon: "shield"
 order: 5
+faq:
+  - question: "Cosa succede se un mese non mi serve alcun intervento?"
+    answer: "Nessun problema: il canone copre un tot di ore disponibili al mese, ma se non le usi non vengono \"perse\" in modo penalizzante — è un servizio pensato per darti tranquillità, non per farti spendere per forza."
+  - question: "Posso disdire quando voglio?"
+    answer: "Sì, nessun vincolo a lungo termine: puoi interrompere il servizio quando preferisci."
+  - question: "Gestite anche siti che non avete realizzato voi?"
+    answer: "Sì, possiamo prendere in carico anche siti realizzati da altri, dopo una prima verifica tecnica per capire come sono strutturati."
 ---
 
 Un sito lanciato e mai più toccato, prima o poi, comincia a scricchiolare: link che si rompono, contenuti da aggiornare, piccole modifiche che si accumulano. Con il piano di manutenzione ci pensiamo noi, così tu puoi concentrarti sulla tua attività.

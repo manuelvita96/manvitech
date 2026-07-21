@@ -3,6 +3,13 @@ title: "Consulenza per siti già esistenti"
 description: "Hai già un sito ma non ti convince? Lo analizziamo e ti diciamo esattamente cosa non va e come sistemarlo."
 icon: "wrench"
 order: 3
+faq:
+  - question: "Quanto costa la consulenza?"
+    answer: "Il costo dipende dalla complessità del sito da analizzare. Nella prima chiacchierata ti diamo un preventivo chiaro prima di iniziare."
+  - question: "Devo per forza farvi sistemare il sito dopo l'analisi?"
+    answer: "No, il report è tuo e puoi farlo sistemare da chi preferisci, anche da chi ha creato il sito originariamente. Se poi vuoi che ce ne occupiamo noi, ne parliamo volentieri."
+  - question: "Quanto tempo richiede l'analisi?"
+    answer: "Solitamente 3-5 giorni lavorativi dal momento in cui abbiamo accesso al sito, per un report completo e ben argomentato."
 ---
 
 Hai già un sito, ma qualcosa non torna: pochi contatti, caricamento lento, o semplicemente non sai se sta davvero lavorando per te. Prima di buttare via tutto e ricominciare da zero, vale la pena capire cosa succede davvero.

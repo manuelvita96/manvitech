@@ -36,13 +36,20 @@ const organizationSchema = {
   '@type': 'ProfessionalService',
   '@id': 'https://manvitech.it/#organization',
   name: 'Manvitech',
+  legalName: 'Manvitech di Vita Manuel',
   url: 'https://manvitech.it',
   logo: new URL('/images/logo.png', Astro.site).toString(),
   image: new URL('/images/og-default.jpg', Astro.site).toString(),
   description:
     'Realizzazione siti internet, gestione social e consulenza SEO per attività e professionisti.',
+  telephone: '+39-345-0639886',
+  email: 'info@manvitech.it',
   address: {
     '@type': 'PostalAddress',
+    streetAddress: 'Via Casabianca 28',
+    addressLocality: 'Fucecchio',
+    postalCode: '50054',
+    addressRegion: 'FI',
     addressCountry: 'IT',
   },
   sameAs: [

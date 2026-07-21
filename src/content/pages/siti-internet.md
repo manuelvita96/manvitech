@@ -3,6 +3,13 @@ title: "Siti internet"
 description: "Siti internet veloci, responsive e su misura, costruiti con tecnologie moderne per ogni dispositivo e obiettivo di business."
 icon: "globe"
 order: 1
+faq:
+  - question: "Quanto costa un sito internet?"
+    answer: "Dipende da cosa ti serve: un sito vetrina semplice ha un costo diverso da uno più articolato o da un e-commerce. Nella prima chiacchierata capiamo l'obiettivo e ti diamo un preventivo chiaro, senza sorprese dopo."
+  - question: "Quanto tempo ci vuole per avere il sito online?"
+    answer: "Per un sito vetrina, generalmente tra le 3 e le 5 settimane dal primo contatto, a seconda di quanto materiale (testi, foto) hai già pronto."
+  - question: "Il sito resta di mia proprietà?"
+    answer: "Sì, al 100%: dominio, codice e contenuti restano tuoi. Se un giorno vuoi cambiare fornitore, puoi farlo senza vincoli."
 ---
 
 Realizziamo siti internet pensati per convertire i visitatori in clienti: veloci al caricamento, chiari da navigare e perfetti su ogni dispositivo, dallo smartphone al desktop.
