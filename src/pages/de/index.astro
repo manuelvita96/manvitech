@@ -1,6 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import HreflangLinks from '../../components/HreflangLinks.astro';
+import HeroLang from '../../components/sections/HeroLang.astro';
 
 // Landing page DE indipendente (non un sito tradotto integralmente):
 // pensata per intercettare ricerche in tedesco da turisti e clienti
@@ -13,21 +14,21 @@ import HreflangLinks from '../../components/HreflangLinks.astro';
   description="Manvitech gestaltet schnelle, moderne Webseiten und SEO-Strategien für Unternehmen in der Toskana, in der Nähe von Fucecchio, San Miniato und Vinci."
 >
   <HreflangLinks slot="head" />
-  <section class="container-page py-20 sm:py-28">
-    <div class="mx-auto max-w-2xl text-center">
-      <span class="badge">Webagentur in der Toskana</span>
-      <h1 class="mt-6 text-4xl font-bold tracking-tight text-ink-900 sm:text-5xl">
-        Webseiten, die aus Ideen <span class="text-gradient">echte Kunden machen</span>
-      </h1>
-      <p class="mx-auto mt-6 max-w-xl text-lg text-ink-500">
-        Wir gestalten schnelle, moderne und maßgeschneiderte Webseiten für Unternehmen und
-        Selbstständige in der Toskana — dazu SEO- und Social-Media-Strategien, damit Sie online
-        gefunden werden.
-      </p>
-      <div class="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-        <a href="mailto:info@manvitech.it" class="btn-primary w-full sm:w-auto">Kontakt aufnehmen</a>
-        <a href="/" class="btn-ghost w-full sm:w-auto">Italienische Version</a>
-      </div>
-    </div>
-  </section>
+
+  <HeroLang
+    badge="Webagentur in der Toskana"
+    titleBefore="Webseiten, die aus Ideen "
+    titleHighlight="echte Kunden machen"
+    description="Wir gestalten schnelle, moderne und maßgeschneiderte Webseiten für Unternehmen und Selbstständige in der Toskana — dazu SEO- und Social-Media-Strategien, damit Sie online gefunden werden."
+    extraParagraph="Wir sitzen zwischen Florenz und Pisa und betreuen Kunden in ganz Italien und im Ausland: Das gesamte Projekt läuft bequem online, vom ersten Gespräch bis zum Launch. Ohne Fachchinesisch, ohne versteckte Kosten — nur eine Webseite, die wirklich neue Kunden bringt."
+    ctaPrimaryHref="mailto:info@manvitech.it"
+    ctaPrimaryLabel="Kontakt aufnehmen"
+    ctaSecondaryHref="/"
+    ctaSecondaryLabel="Italienische Version"
+    trustPoints={[
+      { text: 'Schnelle, maßgeschneiderte Webseiten' },
+      { text: 'SEO und Social Media inklusive' },
+      { text: 'Die Webseite gehört zu 100% Ihnen' },
+    ]}
+  />
 </Layout>

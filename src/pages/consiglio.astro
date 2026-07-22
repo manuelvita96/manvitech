@@ -1,0 +1,57 @@
+---
+import Layout from '../layouts/Layout.astro';
+import BitAvatar from '../components/illustrations/BitAvatar.astro';
+import BitAdvisor from '../components/chat/BitAdvisor.tsx';
+---
+
+<Layout
+  title="Chiedi consiglio a Bit — Manvitech"
+  description="Rispondi a qualche domanda veloce nella chat con Bit: ti aiuta a capire subito da dove partire con il tuo sito, poi lasci i tuoi contatti e ti ricontattiamo noi."
+>
+  <section class="container-page py-16 sm:py-24">
+    <div class="mx-auto max-w-xl text-center" data-reveal>
+      <span class="badge">Due minuti, senza impegno</span>
+      <h1 class="mt-4 text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl">
+        Non sai da dove iniziare? <span class="text-gradient">Chiedi a Bit</span>
+      </h1>
+      <p class="mt-4 text-ink-500">
+        Rispondi a qualche domanda veloce nella chat qui sotto: Bit ti aiuta a capire cosa ti
+        serve davvero, poi lasci i tuoi contatti e ci pensiamo noi.
+      </p>
+    </div>
+
+    <div class="mx-auto mt-6 w-40 sm:w-48" data-reveal="scale" data-parallax="0.05">
+      <BitAvatar />
+    </div>
+
+    <div class="mx-auto mt-8 max-w-xl" data-reveal>
+      <BitAdvisor client:load />
+    </div>
+
+    <p class="mx-auto mt-8 max-w-xl text-center text-sm text-ink-400">
+      Preferisci un form più tradizionale? <a href="/contatti" class="font-medium text-brand-600 hover:underline">Vai alla pagina contatti</a>
+      oppure scrivici a <a href="mailto:info@manvitech.it" class="font-medium text-brand-600 hover:underline">info@manvitech.it</a>
+    </p>
+  </section>
+
+  <!--
+    Form statico "ombra", nascosto: serve solo a far rilevare a Netlify, in
+    fase di build, tutti i campi del form dinamico React (che a runtime
+    mostra solo un pezzo di conversazione alla volta). Stesso meccanismo già
+    usato in /contatti — vedi commento lì per i dettagli.
+  -->
+  <form name="chiedi-a-bit" data-netlify="true" netlify-honeypot="bot-field" hidden>
+    <input type="hidden" name="form-name" value="chiedi-a-bit" />
+    <input name="bot-field" />
+    <input name="name" />
+    <input name="hasSite" />
+    <input name="siteProblem" />
+    <input name="siteUrl" />
+    <input name="businessType" />
+    <input name="targetAudience" />
+    <input name="timeline" />
+    <input name="email" />
+    <input name="phone" />
+    <input name="privacyConsent" />
+  </form>
+</Layout>

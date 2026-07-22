@@ -1,0 +1,117 @@
+---
+// Illustrazione di "Bit", la mascotte: un pannello-browser stilizzato con un
+// volto amichevole, coerente con l'illustrazione dell'hero (stessa barra a
+// tre pallini, stessa palette). Le "braccia" richiamano un cursore che saluta.
+interface Props {
+  class?: string;
+}
+const { class: className = '' } = Astro.props;
+---
+
+<svg viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg" class={`h-auto w-full ${className}`} role="img" aria-label="Bit, la mascotte di Manvitech: un pannello browser con un volto sorridente">
+  <defs>
+    <linearGradient id="bit-grad-1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ED7D31" />
+      <stop offset="1" stop-color="#F0396A" />
+    </linearGradient>
+    <linearGradient id="bit-grad-2" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFC79A" />
+      <stop offset="1" stop-color="#ED7D31" />
+    </linearGradient>
+    <filter id="bit-shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#171717" flood-opacity="0.16" />
+    </filter>
+  </defs>
+
+  <!-- Blob organico di sfondo -->
+  <path class="bit-float-slow" d="M60 130C85 70 170 45 230 75C290 105 260 190 220 230C180 270 100 265 65 220C30 175 35 190 60 130Z" fill="url(#bit-grad-2)" opacity="0.18" />
+
+  <!-- Braccio sinistro (fermo) -->
+  <rect class="bit-float-slow" x="55" y="150" width="20" height="60" rx="10" fill="url(#bit-grad-1)" />
+
+  <!-- Braccio destro che saluta -->
+  <g class="bit-wave">
+    <rect x="225" y="120" width="20" height="60" rx="10" fill="url(#bit-grad-1)" />
+  </g>
+
+  <!-- Corpo: pannello browser con volto -->
+  <g filter="url(#bit-shadow)">
+    <rect x="80" y="90" width="140" height="150" rx="28" fill="white" />
+    <!-- Barra superiore stile browser, coerente col resto del sito -->
+    <rect x="80" y="90" width="140" height="30" rx="28" fill="url(#bit-grad-1)" />
+    <circle cx="98" cy="105" r="4" fill="white" opacity="0.9" />
+    <circle cx="112" cy="105" r="4" fill="white" opacity="0.6" />
+    <circle cx="126" cy="105" r="4" fill="white" opacity="0.6" />
+
+    <!-- Occhi -->
+    <g class="bit-blink">
+      <circle cx="118" cy="165" r="9" fill="#171717" />
+      <circle cx="182" cy="165" r="9" fill="#171717" />
+      <circle cx="121" cy="162" r="2.5" fill="white" />
+      <circle cx="185" cy="162" r="2.5" fill="white" />
+    </g>
+
+    <!-- Guance -->
+    <circle cx="103" cy="190" r="9" fill="#FFC79A" opacity="0.55" />
+    <circle cx="197" cy="190" r="9" fill="#FFC79A" opacity="0.55" />
+
+    <!-- Sorriso -->
+    <path d="M115 195c8 14 62 14 70 0" stroke="#171717" stroke-width="4.5" stroke-linecap="round" fill="none" />
+  </g>
+
+  <!-- Antenna -->
+  <line x1="150" y1="90" x2="150" y2="60" stroke="url(#bit-grad-1)" stroke-width="5" stroke-linecap="round" />
+  <circle class="bit-pulse" cx="150" cy="52" r="10" fill="url(#bit-grad-1)" />
+
+  <!-- Piedini -->
+  <rect x="105" y="240" width="24" height="16" rx="8" fill="#262626" opacity="0.85" />
+  <rect x="171" y="240" width="24" height="16" rx="8" fill="#262626" opacity="0.85" />
+
+  <!-- Puntini decorativi fluttuanti -->
+  <circle class="bit-float-slow" cx="255" cy="70" r="7" fill="#F0396A" opacity="0.6" />
+  <circle class="bit-float-slow" cx="45" cy="90" r="6" fill="#ED7D31" opacity="0.5" />
+</svg>
+
+<style>
+  .bit-wave {
+    transform-origin: 235px 130px;
+    animation: bit-wave 1.8s ease-in-out infinite;
+  }
+  .bit-pulse {
+    transform-origin: center;
+    animation: bit-pulse 2.4s ease-in-out infinite;
+  }
+  .bit-blink {
+    transform-origin: center;
+    animation: bit-blink 4.5s ease-in-out infinite;
+  }
+  .bit-float-slow {
+    animation: bit-float 7s ease-in-out infinite;
+    transform-origin: center;
+  }
+
+  @keyframes bit-wave {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-18deg); }
+    50% { transform: rotate(0deg); }
+    75% { transform: rotate(-10deg); }
+  }
+  @keyframes bit-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.15); }
+  }
+  @keyframes bit-blink {
+    0%, 92%, 100% { transform: scaleY(1); }
+    95% { transform: scaleY(0.15); }
+  }
+  @keyframes bit-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bit-wave, .bit-pulse, .bit-blink, .bit-float-slow {
+      animation: none;
+    }
+  }
+</style>

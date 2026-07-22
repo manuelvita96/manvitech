@@ -1,0 +1,36 @@
+---
+import BitAvatar from '../illustrations/BitAvatar.astro';
+---
+
+<section class="container-page py-16 sm:py-20">
+  <div
+    class="relative overflow-hidden rounded-[2.5rem] px-6 py-12 sm:px-12 sm:py-16"
+    style="background: linear-gradient(135deg, var(--color-brand-50), white);"
+    data-reveal="scale"
+  >
+    <div
+      aria-hidden="true"
+      class="blob pointer-events-none absolute -right-16 -top-16 h-64 w-64 opacity-30 blur-3xl"
+      style="background: linear-gradient(135deg, var(--color-brand-400), var(--color-accent-500));"
+    >
+    </div>
+
+    <div class="relative grid items-center gap-8 sm:grid-cols-[auto_1fr] sm:gap-10">
+      <div class="mx-auto w-28 sm:w-36" data-parallax="0.04">
+        <BitAvatar />
+      </div>
+
+      <div class="text-center sm:text-left">
+        <span class="badge">Ciao, sono Bit</span>
+        <h2 class="mt-3 text-2xl font-bold tracking-tight text-ink-900 sm:text-3xl">
+          Non sai da dove iniziare? <span class="text-gradient">Chiedimi consiglio</span>
+        </h2>
+        <p class="mx-auto mt-3 max-w-md text-ink-500 sm:mx-0">
+          Bastano due minuti in chat: rispondi a qualche domanda veloce e ti aiuto a capire
+          cosa ti serve davvero, prima ancora di parlare col resto del team.
+        </p>
+        <a href="/consiglio" class="btn-primary mt-6 inline-flex">Chiedi consiglio a Bit</a>
+      </div>
+    </div>
+  </div>
+</section>

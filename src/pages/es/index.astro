@@ -1,0 +1,34 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import HreflangLinks from '../../components/HreflangLinks.astro';
+import HeroLang from '../../components/sections/HeroLang.astro';
+
+// Landing page ES indipendente (non un sito tradotto integralmente):
+// pensata per intercettare ricerche in spagnolo da clienti e partner
+// commerciali di lingua spagnola.
+---
+
+<Layout
+  lang="es"
+  title="Manvitech — Páginas web, SEO y redes sociales (Toscana, Italia)"
+  description="Manvitech diseña páginas web rápidas y modernas, con estrategias de SEO y redes sociales, para empresas y profesionales en Toscana, Italia."
+>
+  <HreflangLinks slot="head" />
+
+  <HeroLang
+    badge="Agencia web en Toscana"
+    titleBefore="Páginas web que convierten ideas "
+    titleHighlight="en clientes reales"
+    description="Diseñamos páginas web rápidas, modernas y a medida para empresas y autónomos en Toscana, junto con estrategias de SEO y redes sociales para que te encuentren en internet."
+    extraParagraph="Estamos entre Florencia y Pisa, y trabajamos con clientes en toda Italia y en el extranjero: todo el proyecto se gestiona cómodamente en línea, desde la primera llamada hasta el lanzamiento. Sin tecnicismos, sin sorpresas en la factura — solo una web que realmente te trae clientes."
+    ctaPrimaryHref="mailto:info@manvitech.it"
+    ctaPrimaryLabel="Contáctanos"
+    ctaSecondaryHref="/"
+    ctaSecondaryLabel="Versión italiana"
+    trustPoints={[
+      { text: 'Webs rápidas y hechas a medida' },
+      { text: 'SEO y redes sociales incluidos' },
+      { text: 'La web es 100% tuya' },
+    ]}
+  />
+</Layout>

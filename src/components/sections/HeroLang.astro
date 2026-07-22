@@ -1,16 +1,47 @@
 ---
 import HeroIllustration from '../illustrations/HeroIllustration.astro';
 
-// Anni di esperienza calcolati automaticamente rispetto all'anno di
-// fondazione: si aggiorna da solo ad ogni build, senza bisogno di
-// modificare il numero manualmente ogni anno.
-const FOUNDING_YEAR = 2020;
-const yearsOfExperience = new Date().getFullYear() - FOUNDING_YEAR;
+// Hero riutilizzabile per le landing page straniere (en/de/fr/zh...):
+// stessa struttura visiva ed effetti dell'hero italiano (blob, sfondo a
+// griglia interattivo, reveal-on-scroll, illustrazione vettoriale), ma con
+// testi parametrizzabili per lingua.
+
+interface TrustPoint {
+  text: string;
+}
+
+interface Props {
+  badge: string;
+  titleBefore?: string;
+  titleHighlight: string;
+  titleAfter?: string;
+  description: string;
+  extraParagraph?: string;
+  ctaPrimaryHref: string;
+  ctaPrimaryLabel: string;
+  ctaSecondaryHref: string;
+  ctaSecondaryLabel: string;
+  trustPoints: TrustPoint[];
+}
+
+const {
+  badge,
+  titleBefore,
+  titleHighlight,
+  titleAfter,
+  description,
+  extraParagraph,
+  ctaPrimaryHref,
+  ctaPrimaryLabel,
+  ctaSecondaryHref,
+  ctaSecondaryLabel,
+  trustPoints,
+} = Astro.props;
 ---
 
 <section class="relative overflow-hidden pt-16 pb-20 sm:pt-20 sm:pb-28">
   <!-- Sfondo interattivo: griglia di punti che reagisce al movimento del cursore -->
-  <canvas id="hero-canvas" class="pointer-events-none absolute inset-0 h-full w-full opacity-70" aria-hidden="true"></canvas>
+  <canvas id="hero-lang-canvas" class="pointer-events-none absolute inset-0 h-full w-full opacity-70" aria-hidden="true"></canvas>
 
   <!-- Blob decorativo organico, sfumato tra i colori del brand -->
   <div
@@ -30,41 +61,38 @@ const yearsOfExperience = new Date().getFullYear() - FOUNDING_YEAR;
     <div class="text-center lg:text-left">
       <span class="badge" data-reveal>
         <span class="h-1.5 w-1.5 rounded-full bg-brand-500"></span>
-        Siti internet · SEO · Social
+        {badge}
       </span>
 
       <h1 class="mt-6 text-4xl font-bold leading-[1.08] tracking-tight text-ink-900 sm:text-6xl" data-reveal style="transition-delay: 80ms;">
-        Hai un'idea?<br class="hidden lg:block" />
-        Portiamola <span class="text-gradient">online sul serio</span>
+        {titleBefore}<span class="text-gradient">{titleHighlight}</span>{titleAfter}
       </h1>
 
       <p class="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-ink-500 lg:mx-0" data-reveal style="transition-delay: 160ms;">
-        Ti costruiamo un sito veloce, curato nei minimi dettagli e pensato per portarti
-        clienti veri — non solo bello da guardare. Zero paroloni tecnici, solo risultati.
+        {description}
       </p>
 
+      {extraParagraph && (
+        <p class="mx-auto mt-4 max-w-xl text-base leading-relaxed text-ink-400 lg:mx-0" data-reveal style="transition-delay: 200ms;">
+          {extraParagraph}
+        </p>
+      )}
+
       <div class="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start" data-reveal style="transition-delay: 240ms;">
-        <a href="/contatti" class="btn-primary w-full sm:w-auto">Inizia il tuo progetto</a>
-        <a href="/servizi" class="btn-ghost w-full sm:w-auto">Scopri come lavoriamo</a>
+        <a href={ctaPrimaryHref} class="btn-primary w-full sm:w-auto">{ctaPrimaryLabel}</a>
+        <a href={ctaSecondaryHref} class="btn-ghost w-full sm:w-auto">{ctaSecondaryLabel}</a>
       </div>
 
-      <dl class="mx-auto mt-16 grid max-w-2xl grid-cols-3 gap-6 border-t border-ink-100 pt-8 lg:mx-0" data-reveal style="transition-delay: 320ms;">
-        <div>
-          <dt class="sr-only">Anni di esperienza</dt>
-          <dd class="font-display text-3xl font-bold text-ink-900">{yearsOfExperience}<span class="text-brand-500">+</span></dd>
-          <p class="mt-1 text-xs text-ink-400">Anni di esperienza</p>
-        </div>
-        <div>
-          <dt class="sr-only">CMS su cui lavoriamo</dt>
-          <dd class="font-display text-3xl font-bold text-ink-900">10<span class="text-brand-500">+</span></dd>
-          <p class="mt-1 text-xs text-ink-400">CMS su cui lavoriamo</p>
-        </div>
-        <div>
-          <dt class="sr-only">Problemi risolti su siti datati</dt>
-          <dd class="font-display text-3xl font-bold text-ink-900">95<span class="text-brand-500">%</span></dd>
-          <p class="mt-1 text-xs text-ink-400">Problemi risolti su siti datati</p>
-        </div>
-      </dl>
+      <ul class="mx-auto mt-12 flex max-w-2xl flex-col gap-3 border-t border-ink-100 pt-8 text-left sm:flex-row sm:flex-wrap sm:gap-x-8 lg:mx-0" data-reveal style="transition-delay: 320ms;">
+        {trustPoints.map((point) => (
+          <li class="flex items-center gap-2 text-sm text-ink-500">
+            <svg class="h-4 w-4 flex-none text-brand-500" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M4 10.5l3.5 3.5L16 5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            {point.text}
+          </li>
+        ))}
+      </ul>
     </div>
 
     <div class="mx-auto w-full max-w-md lg:max-w-none" data-reveal="scale" data-parallax="0.06" style="transition-delay: 200ms;">
@@ -76,8 +104,9 @@ const yearsOfExperience = new Date().getFullYear() - FOUNDING_YEAR;
 <script>
   // Sfondo interattivo nell'hero: una griglia di punti che si "allontanano"
   // leggermente dal cursore, per un effetto sottile ma memorabile.
-  function initHeroCanvas() {
-    const canvas = document.getElementById('hero-canvas') as HTMLCanvasElement | null;
+  // (Identico a quello dell'hero italiano, isolato con un id proprio.)
+  function initHeroLangCanvas() {
+    const canvas = document.getElementById('hero-lang-canvas') as HTMLCanvasElement | null;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -173,6 +202,6 @@ const yearsOfExperience = new Date().getFullYear() - FOUNDING_YEAR;
     }).observe(section);
   }
 
-  initHeroCanvas();
-  document.addEventListener('astro:page-load', initHeroCanvas);
+  initHeroLangCanvas();
+  document.addEventListener('astro:page-load', initHeroLangCanvas);
 </script>

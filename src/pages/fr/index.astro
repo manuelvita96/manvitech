@@ -1,6 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import HreflangLinks from '../../components/HreflangLinks.astro';
+import HeroLang from '../../components/sections/HeroLang.astro';
 ---
 
 <Layout
@@ -10,20 +11,20 @@ import HreflangLinks from '../../components/HreflangLinks.astro';
 >
   <HreflangLinks slot="head" />
 
-  <section class="container-page py-20 sm:py-28">
-    <div class="mx-auto max-w-2xl text-center">
-      <span class="badge">Agence web en Toscane</span>
-      <h1 class="mt-6 text-4xl font-bold tracking-tight text-ink-900 sm:text-5xl">
-        Des sites internet qui transforment vos idées <span class="text-gradient">en vrais clients</span>
-      </h1>
-      <p class="mx-auto mt-6 max-w-xl text-lg text-ink-500">
-        Nous concevons des sites internet rapides, modernes et sur mesure pour les entreprises et
-        indépendants de Toscane, avec des stratégies SEO et réseaux sociaux pour être trouvés en ligne.
-      </p>
-      <div class="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-        <a href="mailto:info@manvitech.it" class="btn-primary w-full sm:w-auto">Nous contacter</a>
-        <a href="/" class="btn-ghost w-full sm:w-auto">Version italienne</a>
-      </div>
-    </div>
-  </section>
+  <HeroLang
+    badge="Agence web en Toscane"
+    titleBefore="Des sites internet qui transforment vos idées "
+    titleHighlight="en vrais clients"
+    description="Nous concevons des sites internet rapides, modernes et sur mesure pour les entreprises et indépendants de Toscane, avec des stratégies SEO et réseaux sociaux pour être trouvés en ligne."
+    extraParagraph="Basés entre Florence et Pise, nous accompagnons des clients dans toute l'Italie et à l'étranger : tout le projet se déroule en ligne, du premier échange jusqu'à la mise en ligne. Sans jargon technique, sans mauvaises surprises — juste un site qui vous apporte de vrais clients."
+    ctaPrimaryHref="mailto:info@manvitech.it"
+    ctaPrimaryLabel="Nous contacter"
+    ctaSecondaryHref="/"
+    ctaSecondaryLabel="Version italienne"
+    trustPoints={[
+      { text: 'Sites rapides et sur mesure' },
+      { text: 'SEO et réseaux sociaux inclus' },
+      { text: 'Votre site vous appartient à 100%' },
+    ]}
+  />
 </Layout>
