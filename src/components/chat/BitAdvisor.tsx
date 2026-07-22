@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 
-// Minigame in stile "visual novel": Bit e un secondo personaggio (che
-// rappresenta l'utente, "Tu") si alternano sul palco. Il riquadro di dialogo
-// mostra il testo con un effetto macchina da scrivere; una volta finito,
-// sotto compaiono le scelte (o un campo di testo, o il form finale) come in
-// un menu di gioco. Stesso meccanismo di raccolta dati e invio Netlify Forms
-// di prima, solo con una veste completamente diversa.
+// Minigame in stile "app di quiz" (Duolingo-style): Bit e "Tu" si alternano
+// sul palco, sempre vivi (respirano, saltellano, salutano), con bottoni a
+// effetto pressione 3D, un contatore di stelline che cresce ad ogni
+// risposta, brevi suoni sintetizzati via Web Audio API (nessun file audio
+// esterno necessario) e coriandoli finali. La logica di raccolta dati e
+// invio Netlify Forms resta identica alle versioni precedenti.
 
 type Phase =
   | 'greeting'
@@ -57,36 +57,43 @@ const PHASE_STEP: Record<Phase, number> = {
 };
 const TOTAL_STEPS = 6;
 
-const HAS_SITE_OPTIONS = [
-  { value: 'ha-gia-sito', label: 'Ho già un sito' },
-  { value: 'parto-da-zero', label: 'Parto da zero' },
-  { value: 'non-sono-sicuro', label: 'Non sono sicuro/a' },
+type Option = { value: string; label: string; emoji: string };
+
+const HAS_SITE_OPTIONS: Option[] = [
+  { value: 'ha-gia-sito', label: 'Ho già un sito', emoji: '🌐' },
+  { value: 'parto-da-zero', label: 'Parto da zero', emoji: '🌱' },
+  { value: 'non-sono-sicuro', label: 'Non sono sicuro/a', emoji: '🤔' },
 ];
-const SITE_PROBLEM_OPTIONS = [
-  { value: 'lento', label: 'È lento' },
-  { value: 'vecchio', label: 'Ha un design vecchio' },
-  { value: 'pochi-clienti', label: 'Non porta clienti' },
-  { value: 'non-so', label: 'Non saprei dire' },
+const SITE_PROBLEM_OPTIONS: Option[] = [
+  { value: 'lento', label: 'È lento', emoji: '🐢' },
+  { value: 'vecchio', label: 'Ha un design vecchio', emoji: '🗂️' },
+  { value: 'pochi-clienti', label: 'Non porta clienti', emoji: '📉' },
+  { value: 'non-so', label: 'Non saprei dire', emoji: '🤷' },
 ];
-const BUSINESS_TYPE_OPTIONS = [
-  { value: 'negozio-locale', label: 'Negozio o attività locale' },
-  { value: 'libero-professionista', label: 'Libero professionista' },
-  { value: 'azienda-b2b', label: 'Azienda B2B' },
-  { value: 'altro', label: 'Altro' },
+const BUSINESS_TYPE_OPTIONS: Option[] = [
+  { value: 'negozio-locale', label: 'Negozio o attività locale', emoji: '🏪' },
+  { value: 'libero-professionista', label: 'Libero professionista', emoji: '💼' },
+  { value: 'azienda-b2b', label: 'Azienda B2B', emoji: '🏢' },
+  { value: 'altro', label: 'Altro', emoji: '✨' },
 ];
-const TARGET_AUDIENCE_OPTIONS = [
-  { value: 'privati', label: 'Privati e famiglie' },
-  { value: 'aziende', label: 'Altre aziende (B2B)' },
-  { value: 'turisti', label: 'Turisti e visitatori' },
-  { value: 'misto', label: 'Un po’ di tutto' },
+const TARGET_AUDIENCE_OPTIONS: Option[] = [
+  { value: 'privati', label: 'Privati e famiglie', emoji: '👨‍👩‍👧' },
+  { value: 'aziende', label: 'Altre aziende (B2B)', emoji: '🤝' },
+  { value: 'turisti', label: 'Turisti e visitatori', emoji: '🧳' },
+  { value: 'misto', label: 'Un po’ di tutto', emoji: '🎯' },
 ];
-const TIMELINE_OPTIONS = [
-  { value: 'subito', label: 'Il prima possibile' },
-  { value: '1-2-mesi', label: 'Nei prossimi 1-2 mesi' },
-  { value: 'valutando', label: 'Sto solo valutando' },
+const TIMELINE_OPTIONS: Option[] = [
+  { value: 'subito', label: 'Il prima possibile', emoji: '🚀' },
+  { value: '1-2-mesi', label: 'Nei prossimi 1-2 mesi', emoji: '📅' },
+  { value: 'valutando', label: 'Sto solo valutando', emoji: '🔍' },
 ];
 
-function findLabel(options: { value: string; label: string }[], value: string) {
+const BTN_COLORS = [
+  { border: '#ED7D31', shadow: '#C75F1D' },
+  { border: '#F0396A', shadow: '#C22452' },
+];
+
+function findLabel(options: Option[], value: string) {
   return options.find((o) => o.value === value)?.label ?? value;
 }
 
@@ -128,82 +135,149 @@ function getBotMessage(p: Phase, d: FormState): string {
   }
 }
 
+// --- Suoni: brevi toni generati via Web Audio API, senza file esterni -----
+
+function useGameSounds(enabled: boolean) {
+  const ctxRef = useRef<AudioContext | null>(null);
+
+  function getCtx(): AudioContext | null {
+    if (typeof window === 'undefined') return null;
+    if (!ctxRef.current) {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return null;
+      ctxRef.current = new AudioCtx();
+    }
+    if (ctxRef.current.state === 'suspended') ctxRef.current.resume();
+    return ctxRef.current;
+  }
+
+  function tone(freq: number, duration = 0.1, type: OscillatorType = 'sine', delay = 0, volume = 0.14) {
+    if (!enabled) return;
+    const ctx = getCtx();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    const t0 = ctx.currentTime + delay;
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(volume, t0 + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + duration + 0.02);
+  }
+
+  return {
+    playTap: () => tone(500, 0.07, 'triangle'),
+    playAdvance: () => {
+      tone(660, 0.09, 'sine');
+      tone(880, 0.11, 'sine', 0.08);
+    },
+    playStar: () => {
+      tone(784, 0.09, 'triangle');
+      tone(1046, 0.12, 'triangle', 0.06);
+    },
+    playCelebrate: () => {
+      [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.16, 'triangle', i * 0.1, 0.16));
+    },
+  };
+}
+
 // --- Personaggi -------------------------------------------------------
 
-function BitCharacter({ active }: { active: boolean }) {
+function BitCharacter({ bump }: { bump: boolean }) {
   return (
-    <svg viewBox="0 0 160 190" className="h-24 w-24 sm:h-32 sm:w-32" aria-hidden="true">
-      <defs>
-        <linearGradient id="bit-char-grad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#ED7D31" />
-          <stop offset="1" stopColor="#F0396A" />
-        </linearGradient>
-      </defs>
-      <ellipse cx="80" cy="178" rx="38" ry="7" fill="#171717" opacity="0.1" />
-      <rect x="18" y="80" width="18" height="46" rx="9" fill="url(#bit-char-grad)" />
-      <g className={active ? 'bit-char-wave' : ''} style={{ transformOrigin: '134px 90px' }}>
-        <rect x="124" y="65" width="18" height="46" rx="9" fill="url(#bit-char-grad)" />
-      </g>
-      <rect x="40" y="45" width="80" height="95" rx="20" fill="white" />
-      <rect x="40" y="45" width="80" height="22" rx="20" fill="url(#bit-char-grad)" />
-      <circle cx="55" cy="56" r="3" fill="white" opacity="0.9" />
-      <circle cx="66" cy="56" r="3" fill="white" opacity="0.6" />
-      <circle cx="68" cy="105" r="6.5" fill="#171717" />
-      <circle cx="92" cy="105" r="6.5" fill="#171717" />
-      <circle cx="71" cy="102" r="1.8" fill="white" />
-      <circle cx="95" cy="102" r="1.8" fill="white" />
-      <path d="M64 122c6 10 26 10 32 0" stroke="#171717" strokeWidth="3.5" strokeLinecap="round" fill="none" />
-      <line x1="80" y1="45" x2="80" y2="25" stroke="url(#bit-char-grad)" strokeWidth="4" strokeLinecap="round" />
-      <circle className="bit-char-pulse" cx="80" cy="18" r="8" fill="url(#bit-char-grad)" />
-      <rect x="58" y="150" width="18" height="14" rx="6" fill="#262626" opacity="0.85" />
-      <rect x="84" y="150" width="18" height="14" rx="6" fill="#262626" opacity="0.85" />
-    </svg>
+    <div className={`char-idle ${bump ? 'char-bump' : ''}`}>
+      <svg viewBox="0 0 160 190" className="h-24 w-24 sm:h-32 sm:w-32" aria-hidden="true">
+        <defs>
+          <linearGradient id="bit-char-grad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#ED7D31" />
+            <stop offset="1" stopColor="#F0396A" />
+          </linearGradient>
+        </defs>
+        <ellipse cx="80" cy="178" rx="38" ry="7" fill="#171717" opacity="0.1" />
+        <rect x="18" y="80" width="18" height="46" rx="9" fill="url(#bit-char-grad)" />
+        <g className="bit-char-wave" style={{ transformOrigin: '134px 90px' }}>
+          <rect x="124" y="65" width="18" height="46" rx="9" fill="url(#bit-char-grad)" />
+        </g>
+        <rect x="40" y="45" width="80" height="95" rx="20" fill="white" />
+        <rect x="40" y="45" width="80" height="22" rx="20" fill="url(#bit-char-grad)" />
+        <circle cx="55" cy="56" r="3" fill="white" opacity="0.9" />
+        <circle cx="66" cy="56" r="3" fill="white" opacity="0.6" />
+        <g className="bit-char-blink">
+          <circle cx="68" cy="105" r="6.5" fill="#171717" />
+          <circle cx="92" cy="105" r="6.5" fill="#171717" />
+          <circle cx="71" cy="102" r="1.8" fill="white" />
+          <circle cx="95" cy="102" r="1.8" fill="white" />
+        </g>
+        <path d="M64 122c6 10 26 10 32 0" stroke="#171717" strokeWidth="3.5" strokeLinecap="round" fill="none" />
+        <line x1="80" y1="45" x2="80" y2="25" stroke="url(#bit-char-grad)" strokeWidth="4" strokeLinecap="round" />
+        <circle className="bit-char-pulse" cx="80" cy="18" r="8" fill="url(#bit-char-grad)" />
+        <rect x="58" y="150" width="18" height="14" rx="6" fill="#262626" opacity="0.85" />
+        <rect x="84" y="150" width="18" height="14" rx="6" fill="#262626" opacity="0.85" />
+      </svg>
+    </div>
   );
 }
 
-function UserCharacter({ active }: { active: boolean }) {
+function UserCharacter({ bump }: { bump: boolean }) {
   return (
-    <svg viewBox="0 0 160 190" className="h-24 w-24 sm:h-32 sm:w-32" aria-hidden="true">
-      <ellipse cx="80" cy="178" rx="38" ry="7" fill="#171717" opacity="0.1" />
-      <g className={active ? 'user-char-point' : ''} style={{ transformOrigin: '26px 90px' }}>
-        <rect x="18" y="70" width="17" height="44" rx="8.5" fill="#F0396A" opacity="0.85" />
-      </g>
-      <rect x="124" y="80" width="17" height="44" rx="8.5" fill="#ED7D31" opacity="0.85" />
-      <path d="M40 50 q40 -22 80 0 v55 q0 30 -40 38 q-40 -8 -40 -38 Z" fill="white" stroke="#E5E5E5" strokeWidth="3" />
-      <path d="M62 138 q18 14 36 0 l-8 20 q-10 8 -20 0 Z" fill="white" stroke="#E5E5E5" strokeWidth="3" />
-      <circle cx="66" cy="92" r="6.5" fill="#171717" />
-      <circle cx="94" cy="92" r="6.5" fill="#171717" />
-      <circle cx="69" cy="89" r="1.8" fill="white" />
-      <circle cx="97" cy="89" r="1.8" fill="white" />
-      <path d="M64 108c6 9 26 9 32 0" stroke="#171717" strokeWidth="3.5" strokeLinecap="round" fill="none" />
-      <circle cx="52" cy="105" r="7" fill="#ED7D31" opacity="0.35" />
-      <circle cx="108" cy="105" r="7" fill="#ED7D31" opacity="0.35" />
-    </svg>
+    <div className={`char-idle ${bump ? 'char-bump' : ''}`}>
+      <svg viewBox="0 0 160 190" className="h-24 w-24 sm:h-32 sm:w-32" aria-hidden="true">
+        <ellipse cx="80" cy="178" rx="38" ry="7" fill="#171717" opacity="0.1" />
+        <g className="user-char-point" style={{ transformOrigin: '26px 90px' }}>
+          <rect x="18" y="70" width="17" height="44" rx="8.5" fill="#F0396A" opacity="0.85" />
+        </g>
+        <rect x="124" y="80" width="17" height="44" rx="8.5" fill="#ED7D31" opacity="0.85" />
+        <path d="M40 50 q40 -22 80 0 v55 q0 30 -40 38 q-40 -8 -40 -38 Z" fill="white" stroke="#E5E5E5" strokeWidth="3" />
+        <path d="M62 138 q18 14 36 0 l-8 20 q-10 8 -20 0 Z" fill="white" stroke="#E5E5E5" strokeWidth="3" />
+        <g className="user-char-blink">
+          <circle cx="66" cy="92" r="6.5" fill="#171717" />
+          <circle cx="94" cy="92" r="6.5" fill="#171717" />
+          <circle cx="69" cy="89" r="1.8" fill="white" />
+          <circle cx="97" cy="89" r="1.8" fill="white" />
+        </g>
+        <path d="M64 108c6 9 26 9 32 0" stroke="#171717" strokeWidth="3.5" strokeLinecap="round" fill="none" />
+        <circle cx="52" cy="105" r="7" fill="#ED7D31" opacity="0.35" />
+        <circle cx="108" cy="105" r="7" fill="#ED7D31" opacity="0.35" />
+      </svg>
+    </div>
   );
 }
 
-function ChoiceMenu({
-  options,
-  onSelect,
+function GameButton({
+  option,
+  color,
+  selected,
+  onClick,
+  index,
 }: {
-  options: { value: string; label: string }[];
-  onSelect: (value: string) => void;
+  option: Option;
+  color: { border: string; shadow: string };
+  selected?: boolean;
+  onClick: () => void;
+  index: number;
 }) {
   return (
-    <div className="flex flex-col gap-2">
-      {options.map((opt, i) => (
-        <button
-          key={opt.value}
-          type="button"
-          onClick={() => onSelect(opt.value)}
-          className="choice-btn flex items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 py-3 text-left text-sm font-medium text-ink-700 transition-all hover:translate-x-1 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700"
-          style={{ animationDelay: `${i * 70}ms` }}
-        >
-          <span className="text-brand-500">▸</span>
-          {opt.label}
-        </button>
-      ))}
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className="game-btn flex items-center gap-2.5 rounded-2xl border-2 bg-white px-4 py-3.5 text-left text-sm font-bold text-ink-800"
+      style={
+        {
+          borderColor: color.border,
+          '--btn-shadow-color': selected ? color.shadow : color.shadow,
+          boxShadow: `0 4px 0 ${color.shadow}`,
+          background: selected ? `${color.border}14` : 'white',
+          animationDelay: `${index * 70}ms`,
+        } as CSSProperties
+      }
+    >
+      <span className="text-lg leading-none">{option.emoji}</span>
+      {option.label}
+    </button>
   );
 }
 
@@ -219,9 +293,25 @@ export default function BitAdvisor() {
   const [siteUrlInput, setSiteUrlInput] = useState('');
   const [pendingProblem, setPendingProblem] = useState('');
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [combo, setCombo] = useState(0);
+  const [bitBump, setBitBump] = useState(false);
+  const [userBump, setUserBump] = useState(false);
+  const [soundOn, setSoundOn] = useState(true);
+  const [confetti, setConfetti] = useState<{ id: number; left: number; color: string; delay: number; duration: number; rotate: number }[]>([]);
 
+  const sounds = useGameSounds(soundOn);
   const typingInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const onDoneRef = useRef<(() => void) | undefined>(undefined);
+
+  function bump(who: Speaker) {
+    if (who === 'bit') {
+      setBitBump(true);
+      setTimeout(() => setBitBump(false), 500);
+    } else {
+      setUserBump(true);
+      setTimeout(() => setUserBump(false), 500);
+    }
+  }
 
   function sayLine(who: Speaker, text: string, onDone?: () => void) {
     if (typingInterval.current) clearInterval(typingInterval.current);
@@ -230,6 +320,7 @@ export default function BitAdvisor() {
     setShownText('');
     setIsTypingText(true);
     setShowInput(false);
+    bump(who);
     onDoneRef.current = onDone;
     let i = 0;
     typingInterval.current = setInterval(() => {
@@ -255,8 +346,6 @@ export default function BitAdvisor() {
     cb?.();
   }
 
-  // Ad ogni cambio di fase, Bit "recita" la sua battuta; al termine
-  // dell'effetto macchina da scrivere compaiono le scelte per l'utente.
   useEffect(() => {
     if (phase === 'done') return;
     setShowInput(false);
@@ -267,14 +356,27 @@ export default function BitAdvisor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
-  useEffect(() => () => {
-    if (typingInterval.current) clearInterval(typingInterval.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (typingInterval.current) clearInterval(typingInterval.current);
+    },
+    []
+  );
+
+  function celebrateCombo() {
+    setCombo((c) => Math.min(c + 1, TOTAL_STEPS));
+    sounds.playStar();
+  }
 
   function advanceAfter(userLabel: string, updated: FormState, next: Phase) {
     setData(updated);
+    sounds.playTap();
+    celebrateCombo();
     sayLine('user', userLabel, () => {
-      setTimeout(() => setPhase(next), 500);
+      setTimeout(() => {
+        sounds.playAdvance();
+        setPhase(next);
+      }, 500);
     });
   }
 
@@ -336,6 +438,19 @@ export default function BitAdvisor() {
       });
       if (!res.ok) throw new Error('Errore invio');
       setStatus('success');
+      celebrateCombo();
+      sounds.playCelebrate();
+      const colors = ['#ED7D31', '#F0396A', '#FFC79A', '#262626'];
+      setConfetti(
+        Array.from({ length: 22 }, (_, i) => ({
+          id: i,
+          left: Math.random() * 100,
+          color: colors[i % colors.length],
+          delay: Math.random() * 0.4,
+          duration: 1.6 + Math.random() * 0.9,
+          rotate: Math.random() * 360,
+        }))
+      );
       const firstName = data.name.trim().split(' ')[0];
       sayLine('bit', `Fatto${firstName ? `, ${firstName}` : ''}! 🎉 Ho passato tutto al team: ti ricontattiamo entro 24 ore lavorative.`);
       setPhase('done');
@@ -345,13 +460,14 @@ export default function BitAdvisor() {
   }
 
   const stepNumber = PHASE_STEP[phase];
+  const colorFor = (i: number) => BTN_COLORS[i % BTN_COLORS.length];
 
   return (
     <div className="overflow-hidden rounded-3xl border border-ink-100 bg-white" style={{ boxShadow: 'var(--shadow-card)' }}>
-      {/* Barra di avanzamento, in stile livello di gioco */}
-      <div className="flex items-center gap-3 border-b border-ink-100 bg-ink-50/60 px-4 py-2.5 sm:px-6">
+      {/* Barra di gioco: avanzamento, stelline, audio */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-ink-100 bg-ink-50/60 px-4 py-2.5 sm:px-6">
         <span className="text-xs font-semibold text-ink-400">Passo {stepNumber}/{TOTAL_STEPS}</span>
-        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-ink-100">
+        <div className="h-1.5 min-w-[80px] flex-1 overflow-hidden rounded-full bg-ink-100">
           <div
             className="h-full rounded-full transition-all duration-500 ease-out"
             style={{
@@ -360,31 +476,54 @@ export default function BitAdvisor() {
             }}
           />
         </div>
+        <span key={combo} className="star-pop flex items-center gap-1 text-sm font-bold text-brand-600">
+          ⭐ {combo}
+        </span>
+        <button
+          type="button"
+          onClick={() => setSoundOn((s) => !s)}
+          aria-label={soundOn ? 'Disattiva audio' : 'Attiva audio'}
+          className="rounded-full p-1.5 text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-700"
+        >
+          {soundOn ? '🔊' : '🔇'}
+        </button>
       </div>
 
-      {/* Palco: i due personaggi, uno di fronte all'altro */}
+      {/* Palco: i due personaggi, sempre vivi */}
       <div
         className="relative h-48 overflow-hidden sm:h-56"
         style={{ background: 'linear-gradient(180deg, var(--color-brand-50), white)' }}
       >
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-8 h-px bg-ink-100" />
         <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bottom-8 h-px bg-ink-100"
-        />
-        <div
-          className={`absolute bottom-3 left-3 transition-all duration-300 sm:left-6 ${
-            speaker === 'bit' ? 'scale-100 opacity-100' : 'scale-90 opacity-50 grayscale-[0.2]'
+          className={`char-enter absolute bottom-3 left-3 transition-all duration-300 sm:left-6 ${
+            speaker === 'bit' ? 'scale-100 opacity-100' : 'scale-90 opacity-55 grayscale-[0.2]'
           }`}
         >
-          <BitCharacter active={speaker === 'bit'} />
+          <BitCharacter bump={bitBump} />
         </div>
         <div
-          className={`absolute bottom-3 right-3 transition-all duration-300 sm:right-6 ${
-            speaker === 'user' ? 'scale-100 opacity-100' : 'scale-90 opacity-50 grayscale-[0.2]'
+          className={`char-enter absolute bottom-3 right-3 transition-all duration-300 sm:right-6 ${
+            speaker === 'user' ? 'scale-100 opacity-100' : 'scale-90 opacity-55 grayscale-[0.2]'
           }`}
+          style={{ animationDelay: '0.15s' }}
         >
-          <UserCharacter active={speaker === 'user'} />
+          <UserCharacter bump={userBump} />
         </div>
+
+        {confetti.map((c) => (
+          <span
+            key={c.id}
+            className="confetti-piece pointer-events-none absolute top-0"
+            style={{
+              left: `${c.left}%`,
+              backgroundColor: c.color,
+              animationDelay: `${c.delay}s`,
+              animationDuration: `${c.duration}s`,
+              transform: `rotate(${c.rotate}deg)`,
+            }}
+          />
+        ))}
       </div>
 
       {/* Riquadro di dialogo */}
@@ -410,7 +549,7 @@ export default function BitAdvisor() {
         </p>
       </div>
 
-      {/* Area risposte: scelte, campo di testo, o form finale */}
+      {/* Area risposte: bottoni stile gioco, campo di testo, o form finale */}
       <div className="px-4 pb-5 pt-4 sm:px-6">
         {showInput && phase === 'greeting' && (
           <div className="flex gap-2">
@@ -433,26 +572,26 @@ export default function BitAdvisor() {
           </div>
         )}
 
-        {showInput && phase === 'hasSite' && <ChoiceMenu options={HAS_SITE_OPTIONS} onSelect={handleHasSite} />}
+        {showInput && phase === 'hasSite' && (
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            {HAS_SITE_OPTIONS.map((opt, i) => (
+              <GameButton key={opt.value} option={opt} color={colorFor(i)} index={i} onClick={() => handleHasSite(opt.value)} />
+            ))}
+          </div>
+        )}
 
         {showInput && phase === 'siteProblem' && (
           <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
               {SITE_PROBLEM_OPTIONS.map((opt, i) => (
-                <button
+                <GameButton
                   key={opt.value}
-                  type="button"
+                  option={opt}
+                  color={colorFor(i)}
+                  index={i}
+                  selected={pendingProblem === opt.value}
                   onClick={() => setPendingProblem(opt.value)}
-                  className={`choice-btn flex items-center gap-2 rounded-xl border px-4 py-3 text-left text-sm font-medium transition-all ${
-                    pendingProblem === opt.value
-                      ? 'border-brand-500 bg-brand-50 text-brand-700 ring-2 ring-brand-200'
-                      : 'border-ink-200 bg-white text-ink-700 hover:border-brand-300 hover:bg-brand-50'
-                  }`}
-                  style={{ animationDelay: `${i * 70}ms` }}
-                >
-                  <span className="text-brand-500">▸</span>
-                  {opt.label}
-                </button>
+                />
               ))}
             </div>
             <input
@@ -473,12 +612,28 @@ export default function BitAdvisor() {
         )}
 
         {showInput && phase === 'businessType' && (
-          <ChoiceMenu options={BUSINESS_TYPE_OPTIONS} onSelect={handleBusinessType} />
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            {BUSINESS_TYPE_OPTIONS.map((opt, i) => (
+              <GameButton key={opt.value} option={opt} color={colorFor(i)} index={i} onClick={() => handleBusinessType(opt.value)} />
+            ))}
+          </div>
         )}
+
         {showInput && phase === 'targetAudience' && (
-          <ChoiceMenu options={TARGET_AUDIENCE_OPTIONS} onSelect={handleTargetAudience} />
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            {TARGET_AUDIENCE_OPTIONS.map((opt, i) => (
+              <GameButton key={opt.value} option={opt} color={colorFor(i)} index={i} onClick={() => handleTargetAudience(opt.value)} />
+            ))}
+          </div>
         )}
-        {showInput && phase === 'timeline' && <ChoiceMenu options={TIMELINE_OPTIONS} onSelect={handleTimeline} />}
+
+        {showInput && phase === 'timeline' && (
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            {TIMELINE_OPTIONS.map((opt, i) => (
+              <GameButton key={opt.value} option={opt} color={colorFor(i)} index={i} onClick={() => handleTimeline(opt.value)} />
+            ))}
+          </div>
+        )}
 
         {showInput && phase === 'summary' && (
           <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-2xl border border-ink-100 bg-ink-50/60 p-4">
@@ -534,8 +689,38 @@ export default function BitAdvisor() {
         .dialogue-caret { animation: caret-blink 0.9s steps(1) infinite; color: var(--color-brand-500); }
         @keyframes caret-blink { 0%, 50% { opacity: 1; } 50.01%, 100% { opacity: 0; } }
 
-        .choice-btn { animation: choice-in 0.35s ease-out backwards; }
+        .game-btn {
+          transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.15s ease;
+          animation: choice-in 0.35s ease-out backwards;
+        }
+        .game-btn:active { transform: translateY(4px); box-shadow: 0 0 0 var(--btn-shadow-color) !important; }
         @keyframes choice-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+        .star-pop { animation: star-pop 0.4s ease-out; }
+        @keyframes star-pop {
+          0% { transform: scale(1); }
+          40% { transform: scale(1.35); }
+          100% { transform: scale(1); }
+        }
+
+        .char-enter { animation: char-enter 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) backwards; }
+        @keyframes char-enter {
+          from { transform: translateY(60px) scale(0.7); opacity: 0; }
+          to { transform: translateY(0) scale(1); opacity: 1; }
+        }
+
+        .char-idle { animation: char-idle 2.6s ease-in-out infinite; transform-origin: bottom center; }
+        @keyframes char-idle {
+          0%, 100% { transform: translateY(0) scale(1); }
+          50% { transform: translateY(-5px) scale(1.02); }
+        }
+        .char-bump { animation: char-bump 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) !important; }
+        @keyframes char-bump {
+          0% { transform: translateY(0) scale(1); }
+          30% { transform: translateY(-18px) scale(1.08); }
+          55% { transform: translateY(0) scale(0.96); }
+          100% { transform: translateY(0) scale(1); }
+        }
 
         .bit-char-wave { animation: bit-char-wave 1.6s ease-in-out infinite; }
         @keyframes bit-char-wave {
@@ -549,14 +734,33 @@ export default function BitAdvisor() {
           0%, 100% { opacity: 1; transform: scale(1); }
           50% { opacity: 0.65; transform: scale(1.18); }
         }
+        .bit-char-blink { animation: char-blink 4.2s ease-in-out infinite; transform-origin: center; }
+        .user-char-blink { animation: char-blink 5.1s ease-in-out infinite; transform-origin: center; }
+        @keyframes char-blink {
+          0%, 92%, 100% { transform: scaleY(1); }
+          95% { transform: scaleY(0.15); }
+        }
         .user-char-point { animation: user-char-point 1.6s ease-in-out infinite; }
         @keyframes user-char-point {
           0%, 100% { transform: rotate(0deg); }
           50% { transform: rotate(14deg); }
         }
 
+        .confetti-piece {
+          width: 8px;
+          height: 14px;
+          border-radius: 2px;
+          animation: confetti-fall ease-in forwards;
+        }
+        @keyframes confetti-fall {
+          from { transform: translateY(0) rotate(0deg); opacity: 1; }
+          to { transform: translateY(220px) rotate(540deg); opacity: 0; }
+        }
+
         @media (prefers-reduced-motion: reduce) {
-          .dialogue-caret, .choice-btn, .bit-char-wave, .bit-char-pulse, .user-char-point {
+          .dialogue-caret, .game-btn, .star-pop, .char-enter, .char-idle, .char-bump,
+          .bit-char-wave, .bit-char-pulse, .bit-char-blink, .user-char-blink, .user-char-point,
+          .confetti-piece {
             animation: none;
           }
         }
