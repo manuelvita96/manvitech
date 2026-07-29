@@ -50,7 +50,7 @@
   <div class="answers" id="answers"></div>
 </div>
 
-<style>
+<style is:global>
   .game-card {
     --brand-500:#ED7D31; --brand-600:#DB6A1E; --brand-100:#FCE6D3;
     --accent-500:#F0396A; --accent-600:#D42457;
@@ -150,14 +150,14 @@
   }
   .text-input:focus { border-color: var(--brand-500); background:white; box-shadow: 0 0 0 3px var(--brand-100); }
   .email-form .text-input { border-radius:12px; background:white; }
-  .btn-primary {
+  .bit-btn-primary {
     font-family:'Baloo 2', sans-serif; font-weight:700; color:white; border:none; cursor:pointer;
     background: linear-gradient(135deg, var(--brand-500), var(--accent-500));
     padding: 10px 20px; border-radius:99px; box-shadow: 0 5px 0 var(--brand-600);
     transition: transform .08s ease;
   }
-  .btn-primary:active { transform: translateY(4px); box-shadow:none; }
-  .btn-primary:disabled { opacity:.45; cursor:not-allowed; }
+  .bit-btn-primary:active { transform: translateY(4px); box-shadow:none; }
+  .bit-btn-primary:disabled { opacity:.45; cursor:not-allowed; }
   .consent { display:flex; gap:8px; align-items:flex-start; font-size:11.5px; color: var(--ink-700); }
   .consent input { margin-top:2px; accent-color: var(--brand-500); }
   .success-banner { display:flex; gap:8px; align-items:center; background: var(--brand-100); color: var(--brand-600); font-weight:800; font-size:13px; padding:10px 14px; border-radius:12px; }
@@ -1108,7 +1108,7 @@
     answersEl.innerHTML =
       '<div class="name-row">' +
         '<input id="nameInput" class="text-input" placeholder="Scrivi qui il tuo nome…" autofocus />' +
-        '<button id="nameBtn" class="btn-primary" disabled>Parti</button>' +
+        '<button id="nameBtn" class="bit-btn-primary" disabled>Parti</button>' +
       '</div>';
     var input = document.getElementById('nameInput');
     var btn = document.getElementById('nameBtn');
@@ -1147,7 +1147,7 @@
         '<input type="email" required id="emailInput" class="text-input" placeholder="La tua email *" />' +
         '<input id="phoneInput" class="text-input" placeholder="Telefono (facoltativo)" />' +
         '<label class="consent"><input type="checkbox" required id="consentInput" /><span>Ho letto l’informativa privacy e acconsento al trattamento dei miei dati. *</span></label>' +
-        '<button type="submit" class="btn-primary" id="submitBtn" disabled style="width:fit-content;">Invia a Bit</button>' +
+        '<button type="submit" class="bit-btn-primary" id="submitBtn" disabled style="width:fit-content;">Invia a Bit</button>' +
       '</form>';
     var email = document.getElementById('emailInput');
     var consent = document.getElementById('consentInput');
