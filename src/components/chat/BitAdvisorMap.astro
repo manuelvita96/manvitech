@@ -1,0 +1,1392 @@
+---
+// Minigioco a mappa (stile Pokémon): stesse domande e stesso invio a Netlify
+// Forms del vecchio BitAdvisor.tsx, ma raccontati come un percorso su una
+// mappa invece che come una chat. Nessuna prop richiesta: è autonomo.
+//
+// L'invio finale usa lo stesso "form-name" (chiedi-a-bit) e gli stessi nomi
+// di campo del form ombra nascosto in consiglio.astro, quindi Netlify lo
+// riconosce e lo inoltra esattamente come faceva il vecchio componente.
+---
+<div class="game-card">
+  <div class="hud">
+    <span class="hud-step" id="hudStep">Passo 1/6</span>
+    <div class="hud-bar"><div class="hud-bar-fill" id="hudBarFill" style="width:16.6%"></div></div>
+    <span class="hud-stars" id="hudStars">⭐ 0</span>
+    <button class="hud-sound" id="hudSound" aria-label="Audio">🔊</button>
+    <button class="hud-sound" id="hudRestart" aria-label="Ricomincia da capo" title="Ricomincia da capo">↺</button>
+  </div>
+
+  <div class="map-wrap">
+    <svg id="mapSvg" viewBox="0 0 400 470" preserveAspectRatio="xMidYMax slice">
+      <defs>
+        <pattern id="grassPattern" width="32" height="32" patternUnits="userSpaceOnUse">
+          <rect width="32" height="32" fill="var(--grass-1)"/>
+          <rect width="16" height="16" fill="var(--grass-2)"/>
+          <rect x="16" y="16" width="16" height="16" fill="var(--grass-2)"/>
+          <circle cx="8" cy="24" r="1.4" fill="var(--grass-tuft)" opacity="0.6"/>
+          <circle cx="25" cy="6" r="1.4" fill="var(--grass-tuft)" opacity="0.6"/>
+        </pattern>
+        <pattern id="pathPattern" width="28" height="28" patternUnits="userSpaceOnUse">
+          <rect width="28" height="28" fill="var(--path-1)"/>
+          <circle cx="6" cy="8" r="1.3" fill="var(--path-2)" opacity="0.6"/>
+          <circle cx="20" cy="18" r="1.3" fill="var(--path-2)" opacity="0.6"/>
+          <circle cx="14" cy="4" r="1" fill="var(--path-2)" opacity="0.5"/>
+        </pattern>
+      </defs>
+
+      <!-- terreno: riempie l'intera area di gioco, nessun "cielo" -->
+      <rect id="groundRect" x="0" y="-320" width="400" height="1780" fill="url(#grassPattern)"/>
+
+      <!-- il "mondo" scorrevole: sentiero, alberi, edificio, avatar -->
+      <g id="world"></g>
+    </svg>
+  </div>
+
+  <div class="dialogue" id="dialogue">
+    <span class="dialogue-tag" id="dialogueTag">Bit</span>
+    <p class="dialogue-text" id="dialogueText"><span class="caret">▍</span></p>
+  </div>
+
+  <div class="answers" id="answers"></div>
+</div>
+
+<style>
+  .game-card {
+    --brand-500:#ED7D31; --brand-600:#DB6A1E; --brand-100:#FCE6D3;
+    --accent-500:#F0396A; --accent-600:#D42457;
+    --ink-900:#262626; --ink-700:#4B4640; --ink-400:#948C82; --ink-100:#EFE9DE; --ink-50:#F8F4EC;
+    --paper:#FFFCF6;
+    --grass-1:#7CC168; --grass-2:#6DAE59; --grass-dark:#4E8A44; --grass-tuft:#3F7538;
+    --path-1:#E9D3A0; --path-2:#B6885A; --path-edge:#8C6239;
+    --rock-1:#B9B4AA; --rock-2:#8C877E; --water-1:#6FC7E0; --water-2:#4FA6C4;
+    --bark:#6E4A2A; --bark-dark:#4E3319;
+    --gold:#FFC94D;
+    --shadow-card: 0 18px 40px -18px rgba(38,32,24,0.35);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  button, a, svg, .fork-hint, .choice-btn { -webkit-tap-highlight-color: transparent; outline: none; -webkit-touch-callout: none; }
+  button:focus, .fork-hint:focus, svg:focus { outline: none; }
+  .map-wrap svg * { -webkit-tap-highlight-color: transparent; }
+  .game-card {
+    width: 100%; max-width: 460px; background: var(--paper); border-radius: 28px;
+    overflow: hidden; border: 1px solid var(--ink-100); box-shadow: var(--shadow-card);
+  }
+
+  /* ---------- HUD ---------- */
+  .hud {
+    display:flex; align-items:center; gap:12px; padding: 10px 16px;
+    background: var(--ink-50); border-bottom: 1px solid var(--ink-100);
+  }
+  .hud-step { font-size: 11px; font-weight: 800; color: var(--ink-400); white-space:nowrap; }
+  .hud-bar { flex:1; height:6px; border-radius:99px; background: var(--ink-100); overflow:hidden; }
+  .hud-bar-fill { height:100%; border-radius:99px; background: linear-gradient(90deg, var(--brand-500), var(--accent-500)); transition: width .5s ease; }
+  .hud-stars { font-size:13px; font-weight:800; color: var(--brand-600); display:flex; align-items:center; gap:3px; white-space:nowrap; }
+  .hud-stars.pop { animation: pop .4s ease-out; }
+  @keyframes pop { 0%{transform:scale(1)} 40%{transform:scale(1.3)} 100%{transform:scale(1)} }
+  .hud-sound { border:none; background:transparent; cursor:pointer; font-size:15px; padding:4px 6px; border-radius:99px; color: var(--ink-400); }
+  .hud-sound:hover { background: var(--ink-100); }
+
+  /* ---------- MAP ---------- */
+  .map-wrap {
+    position: relative; width: 100%; aspect-ratio: 400 / 470; overflow: hidden;
+    background: var(--grass-1);
+    border-bottom: 3px solid var(--grass-dark);
+  }
+  .map-wrap svg { display:block; width:100%; height:100%; }
+  .signpost-label {
+    font-family:'Nunito', sans-serif; font-weight: 800; font-size: 11px; fill: var(--ink-900);
+  }
+  .fork-hint { cursor:pointer; }
+  .fork-badge { transform-box: fill-box; transform-origin: center; }
+  .avatar-bob { animation: bob 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+  .avatar-bob.walking { animation: none; }
+  @keyframes bob { 0%,100%{ transform: translateY(0);} 50%{ transform: translateY(-3.5px);} }
+  .avatar-bump { animation: abump .5s cubic-bezier(.34,1.56,.64,1) !important; }
+  @keyframes abump { 0%{transform:translateY(0) scale(1)} 30%{transform:translateY(-9px) scale(1.08)} 60%{transform:translateY(0) scale(.96)} 100%{transform:translateY(0) scale(1)} }
+  .building-glow { animation: glow 1.8s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+  @keyframes glow { 0%,100%{ opacity:.55 } 50%{ opacity:1 } }
+  .waving-hand { animation: wave .7s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 0% 100%; }
+  @keyframes wave { from{ transform: rotate(-8deg);} to{ transform: rotate(30deg);} }
+
+  .confetti-piece { animation: fall ease-in forwards; }
+  @keyframes fall { from{ transform: translateY(0) rotate(0deg); opacity:1;} to{ transform: translateY(300px) rotate(480deg); opacity:0;} }
+
+  /* ---------- DIALOGUE ---------- */
+  .dialogue {
+    position: relative; margin: -22px 16px 0; padding: 14px 16px 12px; background: white;
+    border-radius: 18px; border: 1px solid var(--ink-100); box-shadow: var(--shadow-card); cursor: pointer;
+  }
+  .dialogue-tag {
+    display:inline-block; font-family:'Baloo 2', sans-serif; font-weight:700; font-size:12px;
+    color:white; padding: 3px 12px; border-radius: 99px;
+    background: linear-gradient(135deg, var(--brand-500), var(--accent-500));
+  }
+  .dialogue-tag.user-tag { background: var(--ink-900); }
+  .dialogue-text { margin: 8px 0 0; font-size: 14.5px; line-height:1.5; min-height: 2.8em; }
+  .caret { animation: blink .9s steps(1) infinite; color: var(--brand-500); }
+  @keyframes blink { 0%,50%{opacity:1} 50.01%,100%{opacity:0} }
+
+  /* ---------- ANSWER AREA ---------- */
+  .answers { padding: 14px 16px 20px; }
+  .choices-row { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .choice-btn {
+    display:flex; flex-direction:column; align-items:center; gap:4px; text-align:center;
+    padding: 12px 8px 10px; border-radius:16px; border:none; cursor:pointer;
+    font-family:'Nunito', sans-serif; font-weight:800; font-size:12.5px; color:white;
+    box-shadow: 0 5px 0 var(--btn-shadow); transition: transform .08s ease, box-shadow .08s ease;
+    animation: choicein .35s ease-out backwards;
+  }
+  .choice-btn:nth-child(2){ animation-delay:.06s; }
+  .choice-btn:active { transform: translateY(4px); box-shadow: 0 0 0 var(--btn-shadow); }
+  @keyframes choicein { from{ opacity:0; transform:translateY(6px);} to{ opacity:1; transform:translateY(0);} }
+  .choice-emoji { font-size: 22px; }
+  .choice-arrow { font-size: 11px; opacity:.85; }
+
+  .name-form, .email-form { display:flex; flex-direction:column; gap:10px; }
+  .name-row { display:flex; gap:8px; }
+  .text-input {
+    width:100%; border:1px solid var(--ink-100); border-radius:99px; padding:10px 16px;
+    font-family:'Nunito'; font-size:14px; outline:none; background: var(--ink-50);
+  }
+  .text-input:focus { border-color: var(--brand-500); background:white; box-shadow: 0 0 0 3px var(--brand-100); }
+  .email-form .text-input { border-radius:12px; background:white; }
+  .btn-primary {
+    font-family:'Baloo 2', sans-serif; font-weight:700; color:white; border:none; cursor:pointer;
+    background: linear-gradient(135deg, var(--brand-500), var(--accent-500));
+    padding: 10px 20px; border-radius:99px; box-shadow: 0 5px 0 var(--brand-600);
+    transition: transform .08s ease;
+  }
+  .btn-primary:active { transform: translateY(4px); box-shadow:none; }
+  .btn-primary:disabled { opacity:.45; cursor:not-allowed; }
+  .consent { display:flex; gap:8px; align-items:flex-start; font-size:11.5px; color: var(--ink-700); }
+  .consent input { margin-top:2px; accent-color: var(--brand-500); }
+  .success-banner { display:flex; gap:8px; align-items:center; background: var(--brand-100); color: var(--brand-600); font-weight:800; font-size:13px; padding:10px 14px; border-radius:12px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .avatar-bob, .avatar-bump, .building-glow, .cloud-drift, .choice-btn, .confetti-piece, .caret { animation: none !important; }
+  }
+</style>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ============ CONFIGURAZIONE MAPPA ============ */
+  var VB_W = 400, FOCUS_Y = 370;
+  var STEP_DY = 220;
+  var FORK_DX = 65;
+  var X_MIN = 90, X_MAX = 310;
+  // y di ogni nodo: 0=partenza .. 5=edificio
+  var NODE_Y = [1230, 1010, 790, 570, 350, 140];
+
+  var DECOR = [
+    {type:'hill',   x: 200, y: 1330, s: 1},
+    {type:'tree',   x: 150, y: 1300, s: .85},
+    {type:'bush',   x: 250, y: 1305, s: .9},
+    {type:'pebbles',x: 40,  y: 1290, s: 1},
+    {type:'fruit-tree', x: 38,  y: 1250, s: .95, fruit:'red'},
+    {type:'flower', x: 305, y: 1265, s: 1},
+    {type:'fence',  x: 100, y: 1260, s: .8},
+    {type:'bush',   x: 15,  y: 1200, s: .9},
+    {type:'water',  x: 370, y: 1220, s: .9},
+    {type:'tree',   x: 38,  y: 1150, s: 1},
+    {type:'tree',   x: 360, y: 1130, s: .9},
+    {type:'fruit-bush', x: 68,  y: 1080, s: 1},
+    {type:'flower', x: 300, y: 1180, s: 1},
+    {type:'pebbles',x: 335, y: 1110, s: 1},
+    {type:'mushroom', x: 78, y: 1010, s: 1},
+    {type:'flower', x: 15,  y: 1040, s: 1},
+    {type:'water',  x: 20,  y: 995,  s: 1},
+    {type:'rock',   x: 340, y: 1000, s: 1},
+    {type:'bush',   x: 320, y: 1040, s: .85},
+    {type:'fruit-tree', x: 42,  y: 940,  s: .95, fruit:'orange'},
+    {type:'flower', x: 375, y: 950,  s: 1},
+    {type:'water',  x: 355, y: 880,  s: 1},
+    {type:'pebbles',x: 22,  y: 860,  s: 1},
+    {type:'tallgrass', x: 300, y: 900, s: 1},
+    {type:'bush',   x: 60,  y: 800,  s: .9},
+    {type:'flower', x: 375, y: 820,  s: 1},
+    {type:'tree',   x: 365, y: 760,  s: 1},
+    {type:'flower', x: 45,  y: 700,  s: 1},
+    {type:'haystack', x: 335, y: 700, s: 1},
+    {type:'fruit-bush', x: 20,  y: 660,  s: .95},
+    {type:'river',  y: 980, wobble: 16, slope: 70},
+    {type:'rock',   x: 355, y: 630,  s: .85},
+    {type:'flower', x: 320, y: 670,  s: 1},
+    {type:'fruit-tree', x: 40,  y: 580,  s: 1, fruit:'red'},
+    {type:'bush',   x: 355, y: 500,  s: 1},
+    {type:'flower', x: 375, y: 550,  s: 1},
+    {type:'pebbles',x: 340, y: 560,  s: 1},
+    {type:'water',  x: 360, y: 440,  s: .9},
+    {type:'flower', x: 60,  y: 440,  s: 1},
+    {type:'mushroom', x: 24, y: 500,  s: 1.1},
+    {type:'bush',   x: 18,  y: 480,  s: .9},
+    {type:'tree',   x: 360, y: 400,  s: .9},
+    {type:'river',  y: 520, wobble: 14, loop: true, side: 'right'},
+    {type:'river',  y: 210, wobble: 14, loop: true, side: 'left'},
+    {type:'rock',   x: 42,  y: 330,  s: 1},
+    {type:'flower', x: 20,  y: 380,  s: 1},
+    {type:'water',  x: 375, y: 350,  s: .8},
+    {type:'fruit-tree', x: 355, y: 280,  s: 1, fruit:'orange'},
+    {type:'bush',   x: 45,  y: 220,  s: .95},
+    {type:'flower', x: 375, y: 250,  s: 1},
+    {type:'tallgrass', x: 335, y: 200, s: 1},
+    {type:'pebbles',x: 300, y: 220,  s: 1},
+    {type:'tree',   x: 130, y: 60,   s: .9},
+    {type:'fence',  x: 340, y: 100,  s: .75},
+    {type:'hill',   x: 60,  y: 100,  s: .8},
+    {type:'tree',   x: 280, y: 60,   s: .9},
+    {type:'flower', x: 90,  y: 150,  s: 1},
+    {type:'flower', x: 310, y: 150,  s: 1},
+    {type:'bush',   x: 100, y: 190,  s: .9},
+    {type:'bush',   x: 300, y: 190,  s: .9},
+    {type:'flower', x: 60,  y: 60,   s: 1},
+    {type:'flower', x: 340, y: 60,   s: 1}
+  ];
+
+  /* ============ DOMANDE (albero binario) ============ */
+  function getQuestion(stepIndex, data) {
+    if (stepIndex === 0) {
+      return {
+        key: 'hasSite',
+        text: 'Piacere' + (data.name ? ', ' + data.name : '') + '! Hai già un sito, o parti da zero?',
+        left:  { value: 'ha-gia-sito',   label: 'Ho già un sito', emoji: '🌐' },
+        right: { value: 'parto-da-zero', label: 'Parto da zero',  emoji: '🌱' }
+      };
+    }
+    if (stepIndex === 1) {
+      if (data.hasSite === 'ha-gia-sito') {
+        return {
+          key: 'siteProblem',
+          text: 'Cosa ti frustra di più del tuo sito attuale?',
+          left:  { value: 'lento',         label: 'È lento',            emoji: '🐢' },
+          right: { value: 'pochi-clienti', label: 'Non porta clienti',  emoji: '📉' }
+        };
+      }
+      return {
+        key: 'businessType',
+        text: 'Che tipo di attività hai, o vuoi far conoscere?',
+        left:  { value: 'negozio-locale',  label: 'Negozio locale',        emoji: '🏪' },
+        right: { value: 'professionista',  label: 'Prof. o azienda',       emoji: '💼' }
+      };
+    }
+    if (stepIndex === 2) {
+      return {
+        key: 'targetAudience',
+        text: 'A chi vuoi rivolgerti principalmente?',
+        left:  { value: 'privati', label: 'Privati e famiglie', emoji: '👨‍👩‍👧' },
+        right: { value: 'aziende', label: 'Aziende (B2B)',      emoji: '🤝' }
+      };
+    }
+    // stepIndex === 3
+    return {
+      key: 'timeline',
+      text: 'Ultima cosa: quando vorresti partire?',
+      left:  { value: 'subito',    label: 'Il prima possibile', emoji: '🚀' },
+      right: { value: 'valutando', label: 'Sto solo valutando', emoji: '🔍' }
+    };
+  }
+  var TOTAL_QUESTIONS = 4; // hasSite, (siteProblem|businessType), targetAudience, timeline
+
+  /* ============ STATO ============ */
+  var state = {
+    stepIndex: 0,          // indice domanda corrente (0..3)
+    nodeIndex: 0,           // nodo mappa corrente (0..5)
+    data: { name: '', hasSite:'', siteProblem:'', businessType:'', targetAudience:'', timeline:'', email:'', phone:'', consent:false },
+    nodes: [{ x: 200, y: NODE_Y[0] }],
+    pastForks: [], // bivi già superati: il ramo non scelto resta sempre visibile
+    combo: 0,
+    soundOn: true,
+    phase: 'name' // name | question | arriving | summary | done
+  };
+
+  /* ============ AUDIO ============ */
+  var audioCtx = null;
+  function getCtx() {
+    if (!state.soundOn) return null;
+    if (!audioCtx) {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      audioCtx = new AC();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+  function tone(freq, dur, type, delay, vol) {
+    var ctx = getCtx(); if (!ctx) return;
+    dur = dur || 0.1; type = type || 'sine'; delay = delay || 0; vol = vol || 0.14;
+    var osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.type = type; osc.frequency.value = freq;
+    var t0 = ctx.currentTime + delay;
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(vol, t0 + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(t0); osc.stop(t0 + dur + 0.02);
+  }
+  var sounds = {
+    tap: function () { tone(500, 0.07, 'triangle'); },
+    step: function () { tone(420, 0.05, 'square', 0, 0.06); },
+    star: function () { tone(784, 0.09, 'triangle'); tone(1046, 0.12, 'triangle', 0.06); },
+    celebrate: function () { [523,659,784,1046].forEach(function (f,i){ tone(f,0.16,'triangle', i*0.1, 0.16); }); }
+  };
+
+  /* ============ HELPERS SVG ============ */
+  var SVG_NS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs) {
+    var e = document.createElementNS(SVG_NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  var worldG = document.getElementById('mapSvg').querySelector('#world');
+
+  function clampX(x) { return Math.max(X_MIN, Math.min(X_MAX, x)); }
+
+  var PATH_W = 46; // larghezza del sentiero
+
+  // Calcola i 4 punti di una curva "a gomito" fra due nodi: il parametro bend
+  // (0..1) sposta il punto di svolta più vicino ad a (bend piccolo) o a b (bend
+  // grande, vicino a 0.5 = simmetrico). Il rendering userà giunzioni arrotondate,
+  // quindi questa spezzata diventa visivamente una curva morbida, non uno spigolo.
+  function elbowPoints(a, b, bend) {
+    bend = (bend === undefined) ? 0.5 : bend;
+    var midY = a.y - (a.y - b.y) * bend;
+    return [ { x: a.x, y: a.y }, { x: a.x, y: midY }, { x: b.x, y: midY }, { x: b.x, y: b.y } ];
+  }
+  function polylineD(pts) {
+    var d = 'M ' + pts[0].x + ' ' + pts[0].y;
+    for (var i = 1; i < pts.length; i++) d += ' L ' + pts[i].x + ' ' + pts[i].y;
+    return d;
+  }
+  // trasforma la spezzata in segmenti v/h (serve solo per posizionare i ciuffi d'erba)
+  function segsFromPoints(pts) {
+    var segs = [];
+    for (var i = 0; i < pts.length - 1; i++) {
+      var A = pts[i], B = pts[i + 1];
+      if (A.x === B.x && A.y === B.y) continue;
+      if (A.x === B.x) segs.push({ o: 'v', x: A.x, y1: A.y, y2: B.y });
+      else segs.push({ o: 'h', y: A.y, x1: A.x, x2: B.x });
+    }
+    return segs;
+  }
+
+  function vUnit(v) { var len = Math.hypot(v.x, v.y) || 1; return { x: v.x/len, y: v.y/len }; }
+  function vSub(a, b) { return { x: a.x - b.x, y: a.y - b.y }; }
+
+  // Pianta i ciuffi d'erba seguendo il VERO arco della curva (stesso raggio usato
+  // per arrotondare il bordo marrone): niente più "buchi" nelle svolte.
+  function addCornerTufts(parent, prevPt, corner, nextPt, w) {
+    var inDir = vUnit(vSub(corner, prevPt));
+    var outDir = vUnit(vSub(nextPt, corner));
+    var dot = inDir.x*outDir.x + inDir.y*outDir.y;
+    if (Math.abs(dot) > 0.9 || isNaN(dot)) return; // quasi dritto o segmenti degeneri: nessuna vera curva
+    // bisettrice fra le due perpendicolari ai tratti che si incontrano: un ciuffo
+    // per lato, piazzato esattamente sull'angolo, senza calcolare nessun arco
+    var perp1 = { x: -inDir.y, y: inDir.x };
+    var perp2 = { x: -outDir.y, y: outDir.x };
+    var bis = vUnit({ x: perp1.x + perp2.x, y: perp1.y + perp2.y });
+    if (!isFinite(bis.x) || !isFinite(bis.y)) return;
+    var edge = w/2 + 6; // stessa distanza dal bordo usata sui tratti dritti
+    parent.appendChild(el('ellipse', { cx: corner.x + bis.x*edge, cy: corner.y + bis.y*edge, rx: 5.5, ry: 5.5, fill: 'var(--grass-tuft)' }));
+    parent.appendChild(el('ellipse', { cx: corner.x - bis.x*edge, cy: corner.y - bis.y*edge, rx: 5.5, ry: 5.5, fill: 'var(--grass-tuft)' }));
+  }
+
+  // Disegna più tratti di strada INSIEME, in due passate globali (prima tutti i bordi,
+  // poi tutti i riempimenti): così negli incroci con 3-4 rami non restano giunture
+  // sporche. Le linee usano giunzioni e terminali arrotondati: niente più spigoli.
+  function mergeIntervals(list) {
+    list.sort(function (a, b) { return a.lo - b.lo; });
+    var out = [];
+    list.forEach(function (iv) {
+      var last = out[out.length - 1];
+      if (last && iv.lo <= last.hi + 0.5) last.hi = Math.max(last.hi, iv.hi);
+      else out.push({ lo: iv.lo, hi: iv.hi });
+    });
+    return out;
+  }
+  // unisce i segmenti che condividono la stessa retta e si sovrappongono (es. due
+  // rami di un bivio che partono con lo stesso tratto iniziale): senza questo, gli
+  // stessi ciuffi venivano ridisegnati due volte nello stesso punto
+  function mergeSegs(allSegs) {
+    var vGroups = {}, hGroups = {};
+    allSegs.forEach(function (s) {
+      if (s.o === 'v') {
+        var kx = Math.round(s.x);
+        (vGroups[kx] = vGroups[kx] || []).push({ lo: Math.min(s.y1, s.y2), hi: Math.max(s.y1, s.y2) });
+      } else {
+        var ky = Math.round(s.y);
+        (hGroups[ky] = hGroups[ky] || []).push({ lo: Math.min(s.x1, s.x2), hi: Math.max(s.x1, s.x2) });
+      }
+    });
+    var merged = [];
+    Object.keys(vGroups).forEach(function (k) {
+      mergeIntervals(vGroups[k]).forEach(function (iv) { merged.push({ o: 'v', x: Number(k), y1: iv.lo, y2: iv.hi }); });
+    });
+    Object.keys(hGroups).forEach(function (k) {
+      mergeIntervals(hGroups[k]).forEach(function (iv) { merged.push({ o: 'h', y: Number(k), x1: iv.lo, x2: iv.hi }); });
+    });
+    return merged;
+  }
+
+  function computeBridges(pairs, decorList) {
+    var rivers = decorList.filter(function (d) { return d.type === 'river' && !d.loop; });
+    if (!rivers.length) return [];
+    var bridges = [];
+    pairs.forEach(function (p) {
+      var pts = elbowPoints(p.a, p.b, p.bend);
+      segsFromPoints(pts).forEach(function (s) {
+        rivers.forEach(function (r) {
+          if (s.o === 'v') {
+            var y0 = Math.min(s.y1, s.y2), y1 = Math.max(s.y1, s.y2);
+            var ry = riverY(r, s.x);
+            if (ry > y0 + 6 && ry < y1 - 6) bridges.push({ x: s.x, y: ry });
+          } else {
+            // tratto orizzontale (es. lo "sbandamento" di un bivio): campiono
+            // finemente lungo tutta la sua estensione, perché con l'onda il
+            // fiume può incrociarlo in più punti
+            var x0 = Math.min(s.x1, s.x2), x1 = Math.max(s.x1, s.x2);
+            var prevDiff = riverY(r, x0) - s.y;
+            for (var x = x0 + 4; x <= x1; x += 4) {
+              var diff = riverY(r, x) - s.y;
+              if ((diff > 0) !== (prevDiff > 0) && x > x0 + 6 && x < x1 - 6) {
+                bridges.push({ x: x, y: s.y });
+              }
+              prevDiff = diff;
+            }
+          }
+        });
+      });
+    });
+    // niente doppi ponti troppo vicini fra loro (es. proprio all'angolo di un bivio)
+    var out = [];
+    bridges.forEach(function (b) {
+      var dup = out.some(function (o) { return Math.hypot(o.x - b.x, o.y - b.y) < 24; });
+      if (!dup) out.push(b);
+    });
+    return out;
+  }
+
+  function drawRoadNetwork(parent, pairs, w) {
+    w = w || PATH_W;
+    var polylines = pairs.map(function (p) { return elbowPoints(p.a, p.b, p.bend); });
+    polylines.forEach(function (pts) {
+      parent.appendChild(el('path', { d: polylineD(pts), fill: 'none', stroke: 'var(--path-edge)', 'stroke-width': w + 10, 'stroke-linejoin': 'round', 'stroke-linecap': 'butt' }));
+    });
+    polylines.forEach(function (pts) {
+      parent.appendChild(el('path', { d: polylineD(pts), fill: 'none', stroke: 'url(#pathPattern)', 'stroke-width': w, 'stroke-linejoin': 'round', 'stroke-linecap': 'butt' }));
+    });
+  }
+
+  function addTufts(parent, seg, w) {
+    var step = 24;
+    var edge = w / 2 + 6; // appena oltre il bordo scuro, sul confine con l'erba
+    var corner = 10; // margine minimo: i ciuffi seguono solo il tratto dritto, il più vicino possibile alla svolta
+    if (seg.o === 'v') {
+      var y0 = Math.min(seg.y1, seg.y2), y1 = Math.max(seg.y1, seg.y2);
+      var lenV = y1 - y0;
+      var marginV = Math.min(corner, lenV * 0.4);
+      if (lenV - marginV * 2 < step) {
+        // tratto corto: un solo ciuffo per lato, al centro, così non manca mai
+        var midY = (y0 + y1) / 2;
+        parent.appendChild(el('ellipse', { cx: seg.x - edge, cy: midY, rx: 5, ry: 7, fill: 'var(--grass-tuft)' }));
+        parent.appendChild(el('ellipse', { cx: seg.x + edge, cy: midY, rx: 5, ry: 7, fill: 'var(--grass-tuft)' }));
+      } else {
+        for (var y = y0 + marginV; y < y1 - marginV; y += step) {
+          parent.appendChild(el('ellipse', { cx: seg.x - edge, cy: y, rx: 5, ry: 7, fill: 'var(--grass-tuft)' }));
+          parent.appendChild(el('ellipse', { cx: seg.x + edge, cy: y + step/2, rx: 5, ry: 7, fill: 'var(--grass-tuft)' }));
+        }
+      }
+    } else {
+      var x0 = Math.min(seg.x1, seg.x2), x1 = Math.max(seg.x1, seg.x2);
+      var lenH = x1 - x0;
+      var marginH = Math.min(corner, lenH * 0.4);
+      if (lenH - marginH * 2 < step) {
+        var midX = (x0 + x1) / 2;
+        parent.appendChild(el('ellipse', { cx: midX, cy: seg.y - edge, rx: 7, ry: 5, fill: 'var(--grass-tuft)' }));
+        parent.appendChild(el('ellipse', { cx: midX, cy: seg.y + edge, rx: 7, ry: 5, fill: 'var(--grass-tuft)' }));
+      } else {
+        for (var x = x0 + marginH; x < x1 - marginH; x += step) {
+          parent.appendChild(el('ellipse', { cx: x, cy: seg.y - edge, rx: 7, ry: 5, fill: 'var(--grass-tuft)' }));
+          parent.appendChild(el('ellipse', { cx: x + step/2, cy: seg.y + edge, rx: 7, ry: 5, fill: 'var(--grass-tuft)' }));
+        }
+      }
+    }
+  }
+
+  // vicolo cieco decorativo: crea l'effetto "incrocio a tre vie" senza aggiungere una scelta reale
+  function drawDeadEnd(parent, node, side) {
+    var dx = (side === 'right' ? 26 : -26);
+    var g = el('g', { class: 'ghost-road' });
+    var stubEnd = { x: clampX(node.x + dx), y: node.y - 30 };
+    // bend basso: si stacca quasi subito verso il lato, così non corre parallelo
+    // e sovrapposto al tratto largo del bivio principale
+    drawRoadNetwork(g, [{ a: node, b: stubEnd, bend: 0.2 }], PATH_W - 16);
+    g.appendChild(drawRock(stubEnd.x, stubEnd.y - 6, 0.8));
+    parent.appendChild(g);
+  }
+
+  function drawTree(x, y, scale, fruit) {
+    var g = el('g', { transform: 'translate(' + x + ',' + y + ') scale(' + scale + ')' });
+    g.appendChild(el('ellipse', { cx: 0, cy: 3, rx: 15, ry: 5, fill: '#000', opacity: 0.15 }));
+    g.appendChild(el('rect', { x: -3, y: -12, width: 6, height: 14, fill: 'var(--bark)' }));
+    g.appendChild(el('circle', { cx: 0, cy: -24, r: 15, fill: 'var(--grass-dark)' }));
+    g.appendChild(el('circle', { cx: -7, cy: -27, r: 10, fill: 'var(--grass-2)' }));
+    g.appendChild(el('circle', { cx: 6, cy: -20, r: 8, fill: 'var(--grass-2)' }));
+    g.appendChild(el('circle', { cx: -4, cy: -30, r: 4, fill: 'var(--grass-1)', opacity:.8 }));
+    if (fruit) {
+      var col = fruit === 'orange' ? '#FF9A3D' : '#E1483D';
+      [[-8,-22],[5,-30],[-2,-16],[9,-25]].forEach(function (p) {
+        g.appendChild(el('circle', { cx: p[0], cy: p[1], r: 2.6, fill: col, stroke:'var(--ink-900)', 'stroke-width':.6 }));
+      });
+    }
+    return g;
+  }
+  function drawBush(x, y, scale, berries) {
+    var g = el('g', { transform: 'translate(' + x + ',' + y + ') scale(' + scale + ')' });
+    g.appendChild(el('ellipse', { cx: 0, cy: 3, rx: 13, ry: 4, fill: '#000', opacity: 0.12 }));
+    g.appendChild(el('circle', { cx: -6, cy: -3, r: 8, fill: 'var(--grass-dark)' }));
+    g.appendChild(el('circle', { cx: 6, cy: -3, r: 9, fill: 'var(--grass-2)' }));
+    g.appendChild(el('circle', { cx: 0, cy: -8, r: 7, fill: 'var(--grass-1)' }));
+    if (berries) {
+      [[-6,-4],[6,-3],[0,-9],[3,-1]].forEach(function (p) {
+        g.appendChild(el('circle', { cx: p[0], cy: p[1], r: 1.8, fill: '#6B3FA0' }));
+      });
+    }
+    return g;
+  }
+  function drawRock(x, y, scale) {
+    var g = el('g', { transform: 'translate(' + x + ',' + y + ') scale(' + (scale||1) + ')' });
+    g.appendChild(el('ellipse', { cx: 0, cy: 4, rx: 12, ry: 4, fill: '#000', opacity: 0.15 }));
+    g.appendChild(el('path', { d: 'M -11 2 Q -13 -8 -3 -11 Q 6 -15 11 -6 Q 14 2 6 4 Q -4 7 -11 2 Z', fill: 'var(--rock-2)' }));
+    g.appendChild(el('path', { d: 'M -7 -2 Q -8 -8 -1 -9 Q 4 -10 6 -5 Q 2 -3 -7 -2 Z', fill: 'var(--rock-1)' }));
+    return g;
+  }
+  function drawFlowers(x, y) {
+    var g = el('g', { transform: 'translate(' + x + ',' + y + ')' });
+    var colors = ['#F0396A', '#FFC94D', '#FFFFFF'];
+    var pts = [[-6,-2],[0,2],[6,-3],[-2,4]];
+    pts.forEach(function (p, i) {
+      g.appendChild(el('circle', { cx: p[0], cy: p[1], r: 3, fill: colors[i % colors.length] }));
+      g.appendChild(el('circle', { cx: p[0], cy: p[1], r: 1, fill: '#FFEFA3' }));
+    });
+    return g;
+  }
+  function drawWater(x, y) {
+    var g = el('g', { transform: 'translate(' + x + ',' + y + ')' });
+    g.appendChild(el('ellipse', { cx: 0, cy: 0, rx: 30, ry: 20, fill: 'var(--path-1)', opacity:.5 }));
+    g.appendChild(el('ellipse', { cx: 0, cy: 0, rx: 24, ry: 15, fill: 'var(--water-2)' }));
+    g.appendChild(el('ellipse', { cx: -3, cy: -3, rx: 15, ry: 8, fill: 'var(--water-1)' }));
+    g.appendChild(el('path', { d: 'M -10 -2 Q -4 -6 2 -2', stroke:'white', 'stroke-width':1.6, fill:'none', opacity:.7 }));
+    return g;
+  }
+
+  function drawPebbles(x, y, scale) {
+    var g = el('g', { transform: 'translate(' + x + ',' + y + ') scale(' + (scale||1) + ')' });
+    var pts = [[-8,0,4],[2,-3,3],[8,2,3.4],[-2,5,2.6]];
+    pts.forEach(function (p) {
+      g.appendChild(el('ellipse', { cx: p[0], cy: p[1]+1, rx: p[2], ry: p[2]*0.6, fill: 'var(--rock-2)', opacity:.9 }));
+      g.appendChild(el('ellipse', { cx: p[0]-0.6, cy: p[1], rx: p[2]*0.5, ry: p[2]*0.32, fill: 'var(--rock-1)', opacity:.8 }));
+    });
+    return g;
+  }
+
+  function drawFence(x, y, scale) {
+    var g = el('g', { transform: 'translate(' + x + ',' + y + ') scale(' + (scale||1) + ')' });
+    g.appendChild(el('ellipse', { cx: 0, cy: 3, rx: 22, ry: 4, fill: '#000', opacity: 0.1 }));
+    [-18,0,18].forEach(function (px) {
+      g.appendChild(el('rect', { x: px-2.5, y: -14, width: 5, height: 16, rx: 1.5, fill: '#DCC79A', stroke:'var(--bark)', 'stroke-width':1 }));
+    });
+    g.appendChild(el('rect', { x: -20, y: -12, width: 40, height: 4.5, rx: 2, fill: '#E8D3A6', stroke:'var(--bark)', 'stroke-width':1 }));
+    g.appendChild(el('rect', { x: -20, y: -4, width: 40, height: 4.5, rx: 2, fill: '#E8D3A6', stroke:'var(--bark)', 'stroke-width':1 }));
+    return g;
+  }
+  function drawHaystack(x, y, scale) {
+    var g = el('g', { transform: 'translate(' + x + ',' + y + ') scale(' + (scale||1) + ')' });
+    g.appendChild(el('ellipse', { cx: 0, cy: 4, rx: 15, ry: 4, fill: '#000', opacity: 0.14 }));
+    g.appendChild(el('ellipse', { cx: 0, cy: -4, rx: 14, ry: 11, fill: '#E8C572' }));
+    g.appendChild(el('ellipse', { cx: 0, cy: -4, rx: 14, ry: 11, fill: 'none', stroke:'#C9A24E', 'stroke-width':1.4, 'stroke-dasharray':'2 3' }));
+    g.appendChild(el('ellipse', { cx: -4, cy: -9, rx: 6, ry: 4, fill: '#F2D68C', opacity:.8 }));
+    return g;
+  }
+  function drawHill(x, y, scale) {
+    var g = el('g', { transform: 'translate(' + x + ',' + y + ') scale(' + (scale||1) + ')' });
+    g.appendChild(el('ellipse', { cx: 0, cy: 6, rx: 46, ry: 16, fill: 'var(--grass-dark)', opacity:.5 }));
+    g.appendChild(el('ellipse', { cx: -8, cy: 2, rx: 34, ry: 12, fill: 'var(--grass-2)', opacity:.6 }));
+    return g;
+  }
+  function drawMushroom(x, y, scale) {
+    var g = el('g', { transform: 'translate(' + x + ',' + y + ') scale(' + (scale||1) + ')' });
+    g.appendChild(el('ellipse', { cx: 0, cy: 2, rx: 8, ry: 3, fill: '#000', opacity: 0.12 }));
+    g.appendChild(el('rect', { x: -2.5, y: -6, width: 5, height: 8, rx: 2, fill: '#F4E9D8' }));
+    g.appendChild(el('path', { d: 'M -9 -6 Q 0 -18 9 -6 Q 0 -2 -9 -6 Z', fill: '#D9483F' }));
+    g.appendChild(el('circle', { cx: -3, cy: -9, r: 1.4, fill: '#FBEFE0' }));
+    g.appendChild(el('circle', { cx: 3, cy: -11, r: 1.1, fill: '#FBEFE0' }));
+    g.appendChild(el('circle', { cx: 0, cy: -7, r: 1.2, fill: '#FBEFE0' }));
+    return g;
+  }
+  function drawTallGrass(x, y, scale) {
+    var g = el('g', { transform: 'translate(' + x + ',' + y + ') scale(' + (scale||1) + ')' });
+    var blades = [-7,-2,3,8];
+    blades.forEach(function (bx, i) {
+      var h = 14 + (i % 2) * 4;
+      g.appendChild(el('path', { d: 'M ' + bx + ' 2 Q ' + (bx+3) + ' ' + (-h*0.5) + ' ' + (bx+1) + ' ' + (-h), stroke: 'var(--grass-tuft)', 'stroke-width': 3, fill: 'none', 'stroke-linecap':'round' }));
+    });
+    return g;
+  }
+  // fiume decorativo: una banda blu ondulata, tenuta nei margini cosi non tocca mai la strada
+  var WORLD_TOP = -320, WORLD_BOTTOM = 1460; // ben oltre tutto ciò che la camera può inquadrare
+  // fiume decorativo orizzontale: entra da fuori il bordo sinistro ed esce da
+  // fuori il bordo destro dello schermo, a una certa altezza. Appare e sparisce
+  // da solo man mano che la camera scorre in verticale oltre quella fascia;
+  // dove incrocia la strada, la strada (disegnata dopo) lo copre come un guado.
+  var RIVER_LEFT = -70, RIVER_RIGHT = 470, RIVER_WAVELEN = 250;
+  // y esatta del fiume dritto/obliquo in un punto x qualsiasi: usata sia per
+  // disegnare la curva sia per calcolare dove mettere i ponti, cosi combaciano sempre
+  function riverY(river, x) {
+    var slope = river.slope || 0;
+    var progress = (x - RIVER_LEFT) / (RIVER_RIGHT - RIVER_LEFT);
+    var baseline = river.y - slope/2 + slope*progress;
+    return baseline + (river.wobble || 16) * Math.sin((x - RIVER_LEFT) / RIVER_WAVELEN * Math.PI * 2);
+  }
+
+  function drawRiver(y, wobble, opts) {
+    opts = opts || {};
+    var g = el('g');
+    var d, grassSpots = [];
+    if (opts.loop) {
+      // entra e rientra dallo stesso lato, come un'ansa: non attraversa mai da parte a parte
+      var side = opts.side || 'left';
+      var edgeX = side === 'left' ? -70 : 470;
+      var peakX = side === 'left' ? 175 : 225;
+      var span = 95;
+      var p0 = { x: edgeX, y: y - span };
+      var p1 = { x: peakX, y: y - span*0.45 };
+      var p2 = { x: peakX + (side === 'left' ? wobble : -wobble), y: y };
+      var p3 = { x: peakX, y: y + span*0.45 };
+      var p4 = { x: edgeX, y: y + span };
+      d = 'M ' + p0.x + ' ' + p0.y +
+          ' C ' + p1.x + ' ' + p1.y + ' ' + p1.x + ' ' + p1.y + ' ' + p2.x + ' ' + p2.y +
+          ' C ' + p3.x + ' ' + p3.y + ' ' + p3.x + ' ' + p3.y + ' ' + p4.x + ' ' + p4.y;
+      grassSpots = [ { x: (p0.x+p2.x)/2, y: (p0.y+p2.y)/2 }, { x: (p2.x+p4.x)/2, y: (p2.y+p4.y)/2 } ];
+    } else {
+      // curva continua (seno + eventuale pendenza): la stessa identica formula
+      // usata da riverY() per posizionare i ponti, così non si sfasano mai
+      var river = { y: y, wobble: wobble, slope: opts.slope || 0 };
+      var step = 16;
+      d = 'M ' + RIVER_LEFT + ' ' + riverY(river, RIVER_LEFT);
+      for (var x = RIVER_LEFT + step; x < RIVER_RIGHT; x += step) d += ' L ' + x + ' ' + riverY(river, x);
+      d += ' L ' + RIVER_RIGHT + ' ' + riverY(river, RIVER_RIGHT);
+      for (var gx = 30; gx < RIVER_RIGHT - RIVER_LEFT; gx += 140) {
+        var sx = RIVER_LEFT + gx;
+        grassSpots.push({ x: sx, y: riverY(river, sx) });
+      }
+    }
+    g.appendChild(el('path', { d: d, fill: 'none', stroke: 'var(--path-1)', 'stroke-width': 34, 'stroke-linecap':'round', opacity:.55 }));
+    g.appendChild(el('path', { d: d, fill: 'none', stroke: 'var(--water-2)', 'stroke-width': 26, 'stroke-linecap':'round' }));
+    g.appendChild(el('path', { d: d, fill: 'none', stroke: 'var(--water-1)', 'stroke-width': 15, 'stroke-linecap':'round' }));
+    g.appendChild(el('path', { d: d, fill: 'none', stroke: 'white', 'stroke-width': 2, 'stroke-dasharray':'3 12', opacity:.55 }));
+    grassSpots.forEach(function (p, i) {
+      g.appendChild(drawTallGrass(p.x, p.y + (i % 2 ? 15 : -15), 0.85));
+    });
+    return g;
+  }
+
+  // ponte in legno: dove la strada attraversa un fiume, ha senso che ci sia un guado costruito
+  function drawBridge(x, y) {
+    var g = el('g', { transform: 'translate(' + x + ',' + y + ')' });
+    var w = 42, h = 46;
+    g.appendChild(el('rect', { x: -w/2-4, y: -h/2, width: w+8, height: h, rx: 4, fill: 'var(--bark)' }));
+    for (var i = -h/2+7; i <= h/2-7; i += 8) {
+      g.appendChild(el('line', { x1: -w/2, y1: i, x2: w/2, y2: i, stroke: 'var(--bark-dark)', 'stroke-width': 2.4 }));
+    }
+    g.appendChild(el('rect', { x: -w/2-4, y: -h/2, width: 4.5, height: h, rx: 2, fill: 'var(--bark-dark)' }));
+    g.appendChild(el('rect', { x: w/2-0.5, y: -h/2, width: 4.5, height: h, rx: 2, fill: 'var(--bark-dark)' }));
+    return g;
+  }
+
+  function drawDecor(d) {
+    switch (d.type) {
+      case 'tree': return drawTree(d.x, d.y, d.s);
+      case 'fruit-tree': return drawTree(d.x, d.y, d.s, d.fruit || 'red');
+      case 'bush': return drawBush(d.x, d.y, d.s);
+      case 'fruit-bush': return drawBush(d.x, d.y, d.s, true);
+      case 'rock': return drawRock(d.x, d.y, d.s);
+      case 'flower': return drawFlowers(d.x, d.y);
+      case 'water': return drawWater(d.x, d.y);
+      case 'pebbles': return drawPebbles(d.x, d.y, d.s);
+      case 'mushroom': return drawMushroom(d.x, d.y, d.s);
+      case 'fence': return drawFence(d.x, d.y, d.s);
+      case 'haystack': return drawHaystack(d.x, d.y, d.s);
+      case 'hill': return drawHill(d.x, d.y, d.s);
+      case 'tallgrass': return drawTallGrass(d.x, d.y, d.s);
+      case 'river': return drawRiver(d.y, d.wobble || 16, { slope: d.slope || 0, loop: d.loop, side: d.side });
+    }
+  }
+
+  function drawBuilding(node) {
+    var g = el('g', { transform: 'translate(' + node.x + ',' + node.y + ')', id: 'buildingGroup' });
+    var glow = el('ellipse', { class: 'building-glow', cx: 0, cy: -6, rx: 74, ry: 24, fill: 'var(--gold)', opacity: 0.3 });
+    g.appendChild(glow);
+    g.appendChild(el('rect', { x: -50, y: 4, width: 100, height: 10, fill: 'var(--path-2)' })); // vialetto d'ingresso
+    g.appendChild(el('rect', { x: -46, y: -70, width: 92, height: 74, fill: '#FBEFDA', stroke: 'var(--path-edge)', 'stroke-width': 3 }));
+    g.appendChild(el('polygon', { points: '-54,-70 0,-108 54,-70', fill: 'var(--accent-500)', stroke:'var(--accent-600)', 'stroke-width':2 }));
+    g.appendChild(el('rect', { x: -10, y: -30, width: 20, height: 34, fill: 'var(--bark-dark)' }));
+    g.appendChild(el('rect', { x: -34, y: -58, width: 16, height: 16, fill: 'var(--water-1)', stroke:'var(--path-edge)', 'stroke-width':2 }));
+    g.appendChild(el('rect', { x: 18, y: -58, width: 16, height: 16, fill: 'var(--water-1)', stroke:'var(--path-edge)', 'stroke-width':2 }));
+    var plate = el('rect', { x: -40, y: -96, width: 80, height: 20, rx: 4, fill: 'var(--ink-900)' });
+    g.appendChild(plate);
+    var label = el('text', { x: 0, y: -82, 'text-anchor':'middle', fill:'white', 'font-family':"'Baloo 2', sans-serif", 'font-weight':'700', 'font-size':'11' });
+    label.textContent = 'manvitech';
+    g.appendChild(label);
+    return g;
+  }
+
+  function drawWaveFigure() {
+    var outer = el('g', { transform: 'translate(-26,-49)' });
+    var inner = el('g', { id: 'waveFigure' });
+    inner.style.transform = 'scale(0)';
+    inner.style.transformBox = 'fill-box';
+    inner.style.transformOrigin = 'center';
+    // testa che si affaccia dal davanzale
+    inner.appendChild(el('circle', { cx: 0, cy: 2, r: 6.2, fill: '#FFD9A6', stroke: 'var(--ink-900)', 'stroke-width': 1.2 }));
+    inner.appendChild(el('path', { d: 'M -6.2 -1 Q 0 -8 6.2 -1 Q 3 -4 0 -4 Q -3 -4 -6.2 -1 Z', fill: '#4A2E1A' }));
+    inner.appendChild(el('circle', { cx: -2, cy: 2.5, r: 0.9, fill: '#3B2A1E' }));
+    inner.appendChild(el('circle', { cx: 2, cy: 2.5, r: 0.9, fill: '#3B2A1E' }));
+    inner.appendChild(el('path', { d: 'M -2 5.5 Q 0 7 2 5.5', stroke: '#8A5A3A', 'stroke-width': 1, fill: 'none', 'stroke-linecap':'round' }));
+    // braccio che saluta dalla finestra
+    var arm = el('g', { class: 'waving-hand' });
+    arm.appendChild(el('rect', { x: 5.5, y: -3, width: 3.4, height: 9, rx: 1.6, fill: 'var(--brand-500)' }));
+    arm.appendChild(el('circle', { cx: 7.2, cy: -4, r: 2.6, fill: '#FFD9A6', stroke:'var(--ink-900)', 'stroke-width':1 }));
+    inner.appendChild(arm);
+    outer.appendChild(inner);
+    // animazione d'ingresso: "pop" dal davanzale
+    requestAnimationFrame(function () {
+      inner.style.transition = 'transform .4s cubic-bezier(.34,1.56,.64,1)';
+      inner.style.transform = 'scale(1)';
+    });
+    return outer;
+  }
+
+  function bumpWaveFigure() {
+    var w = document.getElementById('waveFigure');
+    if (!w) return;
+    w.classList.add('avatar-bump');
+    setTimeout(function () { w.classList.remove('avatar-bump'); }, 500);
+  }
+
+  function drawAvatar(node) {
+    var pos = el('g', { id: 'avatarPos', transform: 'translate(' + node.x + ',' + node.y + ')' });
+    var bob = el('g', { class: 'avatar-bob', id: 'avatarBob' });
+    var body = el('g', { id: 'avatarBody', transform: 'rotate(0)' });
+    body.appendChild(el('ellipse', { cx: 0, cy: 5, rx: 11, ry: 3.6, fill: '#000', opacity: 0.18 }));
+    // gambe (accennate, viste da dietro/alto)
+    body.appendChild(el('rect', { id:'avatarLegL', x: -7, y: -2, width: 5, height: 8, rx: 2, fill: '#3B2A1E' }));
+    body.appendChild(el('rect', { id:'avatarLegR', x: 2, y: -2, width: 5, height: 8, rx: 2, fill: '#3B2A1E' }));
+    // corpo
+    body.appendChild(el('rect', { x: -9, y: -17, width: 18, height: 17, rx: 6, fill: 'var(--brand-500)', stroke:'var(--ink-900)', 'stroke-width':1.4 }));
+    body.appendChild(el('rect', { x: -9, y: -9, width: 18, height: 9, rx: 4, fill: 'var(--accent-500)' }));
+    // zainetto/dettaglio
+    body.appendChild(el('rect', { x: -4, y: -15, width: 8, height: 8, rx: 2, fill: '#FFD9A6', opacity:.9 }));
+    // testa
+    body.appendChild(el('circle', { cx: 0, cy: -23, r: 8.5, fill: '#FFD9A6', stroke:'var(--ink-900)', 'stroke-width':1.2 }));
+    body.appendChild(el('path', { d: 'M -8.5 -26 Q 0 -35 8.5 -26 Q 5 -30 0 -30 Q -5 -30 -8.5 -26 Z', fill: '#4A2E1A' }));
+    bob.appendChild(body);
+    pos.appendChild(bob);
+    return pos;
+  }
+
+  function bumpAvatar() {
+    var bob = document.getElementById('avatarBob');
+    if (!bob) return;
+    bob.classList.add('avatar-bump');
+    setTimeout(function () { bob.classList.remove('avatar-bump'); }, 500);
+  }
+
+  /* ============ RENDER MAPPA ============ */
+  // agli step con questi indici, il bivio ha anche un terzo sentiero
+  // decorativo bloccato da una roccia: sembra un vero incrocio a tre vie.
+  var DEAD_END_STEPS = {}; // disattivato: causava una curva sovrapposta indesiderata vicino al sasso
+
+  // I bivi non sono sempre una Y simmetrica: a rotazione diventano un "innesto"
+  // (un ramo prosegue quasi dritto, l'altro si stacca prima e più deciso) o una
+  // "deviazione" nell'altro senso — proprio come negli incroci reali.
+  var FORK_STYLES = ['y', 'innesto-sx', 'innesto-dx'];
+  function getForkGeometry(stepIndex, current) {
+    var style = FORK_STYLES[stepIndex % FORK_STYLES.length];
+    var L = { dx: -FORK_DX, bend: 0.5 }, R = { dx: FORK_DX, bend: 0.5 };
+    if (style === 'innesto-sx') {
+      // il sinistro si stacca presto e con più angolo, il destro resta quasi il tracciato principale
+      L = { dx: -(FORK_DX + 24), bend: 0.28 };
+      R = { dx: FORK_DX * 0.4,   bend: 0.7  };
+    } else if (style === 'innesto-dx') {
+      R = { dx: FORK_DX + 24,   bend: 0.28 };
+      L = { dx: -(FORK_DX * 0.4), bend: 0.7 };
+    }
+    var leftX = current.x + L.dx, rightX = current.x + R.dx;
+    // distanza minima garantita fra i due rami: cosi i cartelli non si toccano mai,
+    // nemmeno quando il bivio è vicino al bordo della mappa e viene "clampato"
+    var MIN_SEP = 120;
+    if (rightX - leftX < MIN_SEP) {
+      var mid = (leftX + rightX) / 2;
+      leftX = mid - MIN_SEP / 2;
+      rightX = mid + MIN_SEP / 2;
+    }
+    leftX = clampX(leftX); rightX = clampX(rightX);
+    if (rightX - leftX < MIN_SEP) {
+      if (leftX <= X_MIN + 1) rightX = clampX(leftX + MIN_SEP);
+      else if (rightX >= X_MAX - 1) leftX = clampX(rightX - MIN_SEP);
+    }
+    return {
+      left:  { x: leftX, y: current.y - STEP_DY, bend: L.bend },
+      right: { x: rightX, y: current.y - STEP_DY, bend: R.bend }
+    };
+  }
+
+  function renderWorld() {
+    worldG.innerHTML = '';
+
+    // decorazioni: prima gli oggetti "dietro" al sentiero
+    DECOR.forEach(function (d) { worldG.appendChild(drawDecor(d)); });
+
+    var buildingPoint = { x: 200, y: NODE_Y[5] };
+
+    // raccolgo TUTTI i tratti di strada (percorso fatto + rami non scelti dei bivi
+    // passati + bivio attivo + collegamento finale all'edificio) e li disegno in
+    // un'unica rete: le giunzioni agli incroci restano sempre pulite.
+    var pairs = [];
+    for (var i = 1; i < state.nodes.length; i++) pairs.push({ a: state.nodes[i - 1], b: state.nodes[i], bend: state.nodes[i].bend });
+    // i rami non scelti ai bivi passati non vengono più disegnati: si "chiudono"
+    // una volta presa la decisione (state.pastForks resta comunque per lo storico)
+
+    var current = state.nodes[state.nodes.length - 1];
+
+    var active = null;
+    if (state.phase === 'question' && state.stepIndex < TOTAL_QUESTIONS) {
+      var q = getQuestion(state.stepIndex, state.data);
+      var geo = getForkGeometry(state.stepIndex, current);
+      active = { current: current, left: geo.left, right: geo.right, q: q };
+      pairs.push({ a: current, b: geo.left, bend: geo.left.bend });
+      pairs.push({ a: current, b: geo.right, bend: geo.right.bend });
+    }
+
+    drawRoadNetwork(worldG, pairs);
+
+    // dove la strada attraversa un fiume (dritto o obliquo), disegno un ponte
+    computeBridges(pairs, DECOR).forEach(function (b) { worldG.appendChild(drawBridge(b.x, b.y)); });
+
+    // vicoli ciechi decorativi (passati + quello del bivio attivo)
+    state.pastForks.forEach(function (f) { if (f.deadEnd) drawDeadEnd(worldG, f.current, f.deadEnd); });
+    if (active && DEAD_END_STEPS[state.stepIndex]) drawDeadEnd(worldG, active.current, DEAD_END_STEPS[state.stepIndex]);
+
+    // il ramo non scelto resta sempre pienamente visibile, come una vera strada
+    // (niente più "sfumato oltre la punta": creava un alone traslucido indesiderato sotto i cartelli)
+
+    // edificio finale sempre visibile in lontananza
+    worldG.appendChild(drawBuilding(buildingPoint));
+
+    // cartelli del bivio attivo (cliccabili), in un gruppo a parte così si possono
+    // rimuovere senza toccare la strada, che resta per sempre
+    if (active) worldG.appendChild(buildForkBadges(active));
+
+    // avatar
+    worldG.appendChild(drawAvatar(current));
+
+    updateCamera(current, false);
+  }
+
+  function drawFadedStub(parent, from) {
+    var stubEnd = { x: from.x, y: from.y - 42 };
+    var g = el('g', { opacity: 0.45 });
+    drawRoadNetwork(g, [{ a: from, b: stubEnd }]);
+    parent.appendChild(g);
+  }
+
+  function wrapLabel(label, maxChars) {
+    var words = label.split(' ');
+    var lines = [], cur = '';
+    words.forEach(function (w) {
+      var test = cur ? cur + ' ' + w : w;
+      if (test.length > maxChars && cur) { lines.push(cur); cur = w; }
+      else cur = test;
+    });
+    if (cur) lines.push(cur);
+    return lines;
+  }
+
+  function buildForkBadges(active) {
+    var layer = el('g', { id: 'activeForkBadges' });
+    [ [active.left, active.q.left, 'left', 0], [active.right, active.q.right, 'right', 1] ].forEach(function (pair) {
+      var pt = pair[0], opt = pair[1], side = pair[2], stagger = pair[3];
+      var g = el('g', { class: 'fork-hint', transform: 'translate(' + pt.x + ',' + pt.y + ')' });
+
+      // riquadro bianco, con la risposta su una o due righe: mai troncata, mai a contatto col bordo
+      var lines = wrapLabel(opt.label, 12);
+      var panelW = 104;
+      var lineH = 15;
+      var padTop = 13, padBottom = 13, emojiRowH = 17;
+      var panelH = padTop + emojiRowH + lines.length * lineH + padBottom;
+      // piccolo sfalsamento estetico fra i due cartelli: la distanza minima fra i
+      // rami è già garantita dalla geometria, quindi qui basta poco
+      var lift = panelH / 2 + 14 + stagger * 10;
+
+      // paletto: parte da terra e arriva esattamente al bordo inferiore del
+      // pannello, qualunque sia la sua altezza — così restano sempre attaccati
+      var poleBottom = 8;
+      var poleTop = -lift + panelH / 2;
+      g.appendChild(el('rect', { x: -2.5, y: poleTop, width: 5, height: poleBottom - poleTop, rx: 1.5, fill: 'var(--bark-dark)' }));
+
+      var badge = el('g', { class: 'fork-badge', transform: 'translate(0,-' + lift + ')' });
+      badge.appendChild(el('rect', { x: -panelW/2, y: -panelH/2, width: panelW, height: panelH, rx: 12, fill: 'white', stroke: 'var(--brand-500)', 'stroke-width': 2.5 }));
+      var top = -panelH/2;
+      var emoji = el('text', { x: 0, y: top + padTop + emojiRowH*0.68, 'text-anchor': 'middle', 'font-size': '16' });
+      emoji.textContent = opt.emoji;
+      badge.appendChild(emoji);
+      lines.forEach(function (line, i) {
+        var ty = top + padTop + emojiRowH + lineH * (i + 0.72);
+        var lbl = el('text', { class: 'signpost-label', x: 0, y: ty, 'text-anchor': 'middle' });
+        lbl.textContent = line;
+        badge.appendChild(lbl);
+      });
+      g.appendChild(badge);
+
+      g.addEventListener('click', function () { if (state.phase === 'question') chooseOption(side); });
+      layer.appendChild(g);
+    });
+    return layer;
+  }
+
+  function updateCamera(node, animate, duration) {
+    var target = FOCUS_Y - node.y;
+    if (!animate) {
+      worldG.setAttribute('transform', 'translate(0,' + target + ')');
+      return;
+    }
+    var startVal = getCurrentTranslateY();
+    animateValue(startVal, target, duration || 750, function (v) {
+      worldG.setAttribute('transform', 'translate(0,' + v + ')');
+    });
+  }
+  function getCurrentTranslateY() {
+    var t = worldG.getAttribute('transform') || 'translate(0,0)';
+    var m = /translate\(0,([-\d.]+)\)/.exec(t);
+    return m ? parseFloat(m[1]) : 0;
+  }
+
+  function animateValue(from, to, duration, onUpdate, onDone) {
+    var start = null;
+    function tick(ts) {
+      if (start === null) start = ts;
+      var t = Math.min(1, (ts - start) / duration);
+      var eased = t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2;
+      onUpdate(from + (to - from) * eased);
+      if (t < 1) requestAnimationFrame(tick); else if (onDone) onDone();
+    }
+    requestAnimationFrame(tick);
+  }
+
+  // Costruisce i punti intermedi lungo il percorso "a gradini" tra due nodi,
+  // così l'avatar può avanzare a piccoli passi invece di scorrere in un'unica tirata.
+  function buildWaypoints(a, b, spacing) {
+    var pts4 = elbowPoints(a, b, b.bend);
+    var segs = segsFromPoints(pts4);
+    var pts = [{ x: a.x, y: a.y }];
+    segs.forEach(function (s) {
+      var start, end;
+      if (s.o === 'v') { start = { x: s.x, y: s.y1 }; end = { x: s.x, y: s.y2 }; }
+      else { start = { x: s.x1, y: s.y }; end = { x: s.x2, y: s.y }; }
+      var dx = end.x - start.x, dy = end.y - start.y;
+      var dist = Math.sqrt(dx * dx + dy * dy);
+      var steps = Math.max(1, Math.round(dist / spacing));
+      for (var i = 1; i <= steps; i++) pts.push({ x: start.x + dx * i / steps, y: start.y + dy * i / steps });
+    });
+    return pts;
+  }
+
+  function walkAvatar(fromNode, toNode, totalDuration, onDone) {
+    var pos = document.getElementById('avatarPos');
+    var bob = document.getElementById('avatarBob');
+    var body = document.getElementById('avatarBody');
+    var legL = document.getElementById('avatarLegL');
+    var legR = document.getElementById('avatarLegR');
+    var waypoints = buildWaypoints(fromNode, toNode, 32);
+    var n = waypoints.length - 1;
+    if (n < 1) { if (onDone) onDone(); return; }
+    var hopDur = Math.max(90, totalDuration / n);
+    if (bob) bob.classList.add('walking'); // ferma il dondolio "a riposo": ora cammina davvero
+    var idx = 0;
+
+    function hop() {
+      if (idx >= n) { finish(); return; }
+      var p0 = waypoints[idx], p1 = waypoints[idx + 1];
+      var angle = p1.x > p0.x ? 14 : (p1.x < p0.x ? -14 : 0);
+      if (body) body.setAttribute('transform', 'rotate(' + angle + ')');
+      var forward = idx % 2 === 0;
+      if (legL) legL.setAttribute('transform', 'translate(0,' + (forward ? -2 : 2) + ')');
+      if (legR) legR.setAttribute('transform', 'translate(0,' + (forward ? 2 : -2) + ')');
+      var start = null;
+      function frame(ts) {
+        if (start === null) start = ts;
+        var t = Math.min(1, (ts - start) / hopDur);
+        var x = p0.x + (p1.x - p0.x) * t;
+        var y = p0.y + (p1.y - p0.y) * t;
+        var bounce = Math.sin(Math.PI * t) * 3.4; // arco del passo
+        if (pos) pos.setAttribute('transform', 'translate(' + x + ',' + y + ')');
+        if (bob) bob.style.transform = 'translateY(-' + bounce + 'px)';
+        if (t < 1) requestAnimationFrame(frame); else { idx++; hop(); }
+      }
+      requestAnimationFrame(frame);
+    }
+    function finish() {
+      if (body) body.setAttribute('transform', 'rotate(0)');
+      if (legL) legL.removeAttribute('transform');
+      if (legR) legR.removeAttribute('transform');
+      if (bob) { bob.classList.remove('walking'); bob.style.transform = ''; }
+      if (onDone) onDone();
+    }
+    hop();
+  }
+
+  /* ============ DIALOGO (typewriter) ============ */
+  var dialogueEl = document.getElementById('dialogueText');
+  var dialogueTag = document.getElementById('dialogueTag');
+  var typingTimer = null, fullText = '', onTypedDone = null, isTyping = false;
+
+  function say(who, text, cb) {
+    if (typingTimer) clearInterval(typingTimer);
+    dialogueTag.textContent = who === 'bit' ? 'Bit' : 'Tu';
+    dialogueTag.className = 'dialogue-tag' + (who === 'user' ? ' user-tag' : '');
+    fullText = text; onTypedDone = cb; isTyping = true;
+    var i = 0;
+    dialogueEl.innerHTML = '';
+    typingTimer = setInterval(function () {
+      i++;
+      dialogueEl.textContent = text.slice(0, i);
+      if (i >= text.length) {
+        clearInterval(typingTimer); isTyping = false;
+        var c = onTypedDone; onTypedDone = null;
+        if (c) c();
+      }
+    }, 16);
+  }
+  function skipTyping() {
+    if (!isTyping) return;
+    clearInterval(typingTimer);
+    dialogueEl.textContent = fullText;
+    isTyping = false;
+    var c = onTypedDone; onTypedDone = null;
+    if (c) c();
+  }
+  document.getElementById('dialogue').addEventListener('click', skipTyping);
+
+  /* ============ HUD ============ */
+  function updateHud() {
+    var stepNum = 1;
+    if (state.phase === 'question') stepNum = state.stepIndex + 1;
+    else if (state.phase === 'summary') stepNum = 5;
+    else if (state.phase === 'done') stepNum = 6;
+    document.getElementById('hudStep').textContent = 'Passo ' + stepNum + '/6';
+    document.getElementById('hudBarFill').style.width = (stepNum / 6 * 100) + '%';
+    var starsEl = document.getElementById('hudStars');
+    starsEl.textContent = '⭐ ' + state.combo;
+  }
+  function celebrateCombo() {
+    state.combo = Math.min(state.combo + 1, 6);
+    var starsEl = document.getElementById('hudStars');
+    starsEl.classList.remove('pop'); void starsEl.offsetWidth; starsEl.classList.add('pop');
+    sounds.star();
+    updateHud();
+  }
+  document.getElementById('hudSound').addEventListener('click', function () {
+    state.soundOn = !state.soundOn;
+    this.textContent = state.soundOn ? '🔊' : '🔇';
+  });
+
+  /* ============ RISPOSTE / UI AREA ============ */
+  var answersEl = document.getElementById('answers');
+
+  function renderNameForm() {
+    answersEl.innerHTML =
+      '<div class="name-row">' +
+        '<input id="nameInput" class="text-input" placeholder="Scrivi qui il tuo nome…" autofocus />' +
+        '<button id="nameBtn" class="btn-primary" disabled>Parti</button>' +
+      '</div>';
+    var input = document.getElementById('nameInput');
+    var btn = document.getElementById('nameBtn');
+    input.addEventListener('input', function () { btn.disabled = !input.value.trim(); });
+    input.addEventListener('keydown', function (e) { if (e.key === 'Enter' && input.value.trim()) submitName(); });
+    btn.addEventListener('click', submitName);
+    function submitName() {
+      var val = input.value.trim(); if (!val) return;
+      state.data.name = val;
+      sounds.tap(); celebrateCombo();
+      say('user', val, function () {
+        setTimeout(startQuestions, 450);
+      });
+      answersEl.innerHTML = '';
+    }
+  }
+
+  function renderChoiceButtons(q) {
+    answersEl.innerHTML =
+      '<div class="choices-row">' +
+        '<button class="choice-btn" id="btnLeft" style="--btn-shadow:#DB6A1E; background:linear-gradient(135deg,#ED7D31,#F0396A);">' +
+          '<span class="choice-arrow">⬅ sinistra</span><span class="choice-emoji">' + q.left.emoji + '</span><span>' + q.left.label + '</span>' +
+        '</button>' +
+        '<button class="choice-btn" id="btnRight" style="--btn-shadow:#B31E44; background:linear-gradient(135deg,#F0396A,#262626);">' +
+          '<span class="choice-arrow">destra ➡</span><span class="choice-emoji">' + q.right.emoji + '</span><span>' + q.right.label + '</span>' +
+        '</button>' +
+      '</div>';
+    document.getElementById('btnLeft').addEventListener('click', function () { chooseOption('left'); });
+    document.getElementById('btnRight').addEventListener('click', function () { chooseOption('right'); });
+  }
+
+  function renderSummaryForm() {
+    var firstName = state.data.name.split(' ')[0];
+    answersEl.innerHTML =
+      '<form class="email-form" id="summaryForm">' +
+        '<input type="email" required id="emailInput" class="text-input" placeholder="La tua email *" />' +
+        '<input id="phoneInput" class="text-input" placeholder="Telefono (facoltativo)" />' +
+        '<label class="consent"><input type="checkbox" required id="consentInput" /><span>Ho letto l’informativa privacy e acconsento al trattamento dei miei dati. *</span></label>' +
+        '<button type="submit" class="btn-primary" id="submitBtn" disabled style="width:fit-content;">Invia a Bit</button>' +
+      '</form>';
+    var email = document.getElementById('emailInput');
+    var consent = document.getElementById('consentInput');
+    var submitBtn = document.getElementById('submitBtn');
+    function checkValid() { submitBtn.disabled = !(email.value && consent.checked); }
+    email.addEventListener('input', checkValid);
+    consent.addEventListener('change', checkValid);
+    document.getElementById('summaryForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      state.data.email = email.value;
+      state.data.phone = document.getElementById('phoneInput').value;
+      submitLead();
+    });
+  }
+
+  /* ============ FLUSSO DI GIOCO ============ */
+  function startQuestions() {
+    state.phase = 'question';
+    updateHud();
+    askCurrentQuestion();
+  }
+
+  function askCurrentQuestion() {
+    var q = getQuestion(state.stepIndex, state.data);
+    answersEl.innerHTML = '';
+    renderWorld(); // mostra il bivio fantasma
+    say('bit', q.text, function () {
+      renderChoiceButtons(q);
+    });
+  }
+
+  function chooseOption(side) {
+    var q = getQuestion(state.stepIndex, state.data);
+    var opt = side === 'left' ? q.left : q.right;
+    state.data[q.key] = opt.value;
+    answersEl.innerHTML = '';
+
+    var current = state.nodes[state.nodes.length - 1];
+    var isLastQuestion = state.stepIndex === TOTAL_QUESTIONS - 1;
+    var geo = getForkGeometry(state.stepIndex, current);
+    var chosenPt = side === 'left' ? geo.left : geo.right;
+    var unchosenPt = side === 'left' ? geo.right : geo.left;
+    var nextNode = { x: chosenPt.x, y: chosenPt.y, bend: chosenPt.bend };
+    var stepIndexNow = state.stepIndex;
+
+    sounds.tap(); celebrateCombo();
+    say('user', opt.label, function () {
+      setTimeout(function () {
+        sounds.step();
+        // il bivio diventa storia: il ramo non scelto resta sulla mappa per sempre,
+        // spariscono solo i cartelli cliccabili (la strada l'ha già disegnata renderWorld)
+        var badges = document.getElementById('activeForkBadges');
+        if (badges) badges.remove();
+        state.pastForks.push({ current: { x: current.x, y: current.y }, unchosenPt: unchosenPt, bend: unchosenPt.bend, deadEnd: DEAD_END_STEPS[stepIndexNow] || null });
+        state.nodes.push(nextNode);
+        state.stepIndex++;
+
+        var walkDur = 900;
+        walkAvatar(current, nextNode, walkDur, function () {
+          updateCamera(nextNode, false);
+          if (isLastQuestion) {
+            var buildingPoint = { x: 200, y: NODE_Y[5], bend: 0.5 };
+            state.nodes.push(buildingPoint); // ora è un nodo vero: la mappa lo ricorda sempre
+            // disegno subito il tratto di collegamento fino all'edificio, senza
+            // resettare l'omino (niente renderWorld qui, o farebbe un salto visivo);
+            // lo metto PRIMA della casa nell'ordine SVG, cosi resta sempre dietro
+            var connectorG = el('g');
+            drawRoadNetwork(connectorG, [{ a: nextNode, b: buildingPoint, bend: 0.5 }]);
+            var buildingEl = document.getElementById('buildingGroup');
+            if (buildingEl) worldG.insertBefore(connectorG, buildingEl); else worldG.appendChild(connectorG);
+            var avatarPosEl = document.getElementById('avatarPos');
+            if (avatarPosEl) worldG.appendChild(avatarPosEl); // l'omino resta sempre sopra a tutto
+            var lastLeg = 1000;
+            updateCamera(buildingPoint, true, lastLeg);
+            walkAvatar(nextNode, buildingPoint, lastLeg, function () {
+              updateCamera(buildingPoint, false);
+              arriveAtBuilding();
+            });
+          }
+        });
+        updateCamera(nextNode, true, walkDur);
+
+        if (!isLastQuestion) {
+          setTimeout(function () { state.phase = 'question'; updateHud(); askCurrentQuestion(); }, walkDur + 150);
+        } else {
+          updateHud();
+        }
+      }, 450);
+    });
+  }
+
+  function arriveAtBuilding() {
+    state.phase = 'summary';
+    updateHud();
+    renderWorld();
+    var buildingPoint = { x: 200, y: NODE_Y[5] };
+
+    // l'omino non "esce" dalla scena: si avvicina alla porta e si dissolve dolcemente
+    // sul posto, poi ricompare alla finestra a salutare
+    setTimeout(function () {
+      var avatarPos = document.getElementById('avatarPos');
+      if (avatarPos) {
+        // la posizione dell'omino è impostata via attributo SVG (translate),
+        // non via CSS: fisso qui lo stato di partenza identico, altrimenti la
+        // transizione CSS lo farebbe "volare" verso l'origine (0,0) della mappa
+        avatarPos.style.transformBox = 'fill-box';
+        avatarPos.style.transform = 'translate(' + buildingPoint.x + 'px,' + buildingPoint.y + 'px)';
+        avatarPos.style.transition = 'opacity .45s ease, transform .45s ease';
+        requestAnimationFrame(function () {
+          avatarPos.style.opacity = '0';
+          avatarPos.style.transform = 'translate(' + buildingPoint.x + 'px,' + buildingPoint.y + 'px) scale(0.82) translateY(-3px)';
+        });
+      }
+      setTimeout(function () {
+        var bg = document.getElementById('buildingGroup');
+        if (bg && !document.getElementById('waveFigure')) {
+          bg.appendChild(drawWaveFigure());
+          sounds.tap();
+        }
+      }, 420);
+    }, 300);
+
+    var firstName = state.data.name.split(' ')[0];
+    say('bit', 'Siamo arrivati! Lascia qui la tua email' + (firstName ? ', ' + firstName : '') + ': il team di manvitech ti ricontatta a breve. 🙂', function () {
+      renderSummaryForm();
+    });
+  }
+
+  function launchConfetti() {
+    var mapWrap = document.querySelector('.map-wrap');
+    var colors = ['#ED7D31', '#F0396A', '#FFC79A', '#262626'];
+    for (var i = 0; i < 22; i++) {
+      var piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      piece.style.cssText = 'position:absolute;top:0;left:' + (Math.random()*100) + '%;width:7px;height:12px;border-radius:2px;background:' + colors[i % colors.length] + ';animation-delay:' + (Math.random()*0.4) + 's;animation-duration:' + (1.4+Math.random()*0.8) + 's;';
+      mapWrap.appendChild(piece);
+      (function (p) { setTimeout(function () { p.remove(); }, 2400); })(piece);
+    }
+  }
+
+  function submitLead() {
+    var submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true; submitBtn.textContent = 'Invio in corso…';
+
+    // Invio reale a Netlify Forms: stesso meccanismo del form "ombra" nascosto
+    // nella pagina (form-name + campi con lo stesso nome), cosi Netlify
+    // riconosce e inoltra la sottomissione esattamente come faceva il vecchio form.
+    var payload = {
+      'form-name': 'chiedi-a-bit',
+      'bot-field': '',
+      name: state.data.name,
+      hasSite: state.data.hasSite,
+      siteProblem: state.data.siteProblem,
+      siteUrl: '',
+      businessType: state.data.businessType,
+      targetAudience: state.data.targetAudience,
+      timeline: state.data.timeline,
+      email: state.data.email,
+      phone: state.data.phone,
+      privacyConsent: 'true'
+    };
+    var body = Object.keys(payload).map(function (k) {
+      return encodeURIComponent(k) + '=' + encodeURIComponent(payload[k]);
+    }).join('&');
+
+    fetch(window.location.pathname, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body
+    }).then(function (res) {
+      if (!res.ok) throw new Error('Errore invio');
+      state.phase = 'done';
+      celebrateCombo();
+      sounds.celebrate();
+      launchConfetti();
+      answersEl.innerHTML = '<div class="success-banner">🎉 Missione compiuta! Ti ricontattiamo presto.</div>';
+      var firstName = state.data.name.split(' ')[0];
+      say('bit', 'Fatto' + (firstName ? ', ' + firstName : '') + '! 🎉 Ho passato tutto al team: ti ricontattiamo entro 24 ore lavorative.');
+      bumpWaveFigure();
+    }).catch(function () {
+      submitBtn.disabled = false; submitBtn.textContent = 'Invia a Bit';
+      var form = document.getElementById('summaryForm');
+      if (form && !document.getElementById('submitError')) {
+        var err = document.createElement('p');
+        err.id = 'submitError';
+        err.style.cssText = 'color:var(--accent-600);font-size:12px;margin:0;';
+        err.textContent = 'Ops, qualcosa è andato storto. Riprova, oppure scrivici a info@manvitech.it';
+        form.appendChild(err);
+      }
+    });
+  }
+
+  /* ============ AVVIO ============ */
+  function doReset() {
+    var soundWas = state.soundOn;
+    state.stepIndex = 0;
+    state.data = { name: '', hasSite:'', siteProblem:'', businessType:'', targetAudience:'', timeline:'', email:'', phone:'', consent:false };
+    state.nodes = [{ x: 200, y: NODE_Y[0] }];
+    state.pastForks = [];
+    state.combo = 0;
+    state.soundOn = soundWas;
+    state.phase = 'name';
+    var w = document.getElementById('waveFigure');
+    if (w && w.parentNode) w.parentNode.removeChild(w);
+    init();
+  }
+
+  function resetGame() {
+    // niente confirm() nativo: nelle webview integrate spesso non funziona.
+    // Chiedo conferma con i bottoni di gioco che già usiamo per le risposte.
+    say('bit', 'Vuoi ricominciare da capo? I progressi di questa partita andranno persi. 🙂', function () {
+      answersEl.innerHTML =
+        '<div class="choices-row">' +
+          '<button class="choice-btn" id="btnResetYes" style="--btn-shadow:#B31E44; background:linear-gradient(135deg,#F0396A,#262626);">' +
+            '<span class="choice-emoji">↺</span><span>Sì, ricomincia</span>' +
+          '</button>' +
+          '<button class="choice-btn" id="btnResetNo" style="--btn-shadow:#DB6A1E; background:linear-gradient(135deg,#ED7D31,#F0396A);">' +
+            '<span class="choice-emoji">↩️</span><span>No, continua</span>' +
+          '</button>' +
+        '</div>';
+      document.getElementById('btnResetYes').addEventListener('click', doReset);
+      document.getElementById('btnResetNo').addEventListener('click', function () {
+        // torna alla schermata corretta in base a dove eravamo rimasti
+        if (state.phase === 'name') { say('bit', 'Ok, continuiamo da qui! Come ti chiami?', function () { renderNameForm(); }); }
+        else if (state.phase === 'question') { askCurrentQuestion(); }
+        else if (state.phase === 'summary') { say('bit', 'Ok, continuiamo da qui!', function () { renderSummaryForm(); }); }
+        else { answersEl.innerHTML = ''; }
+      });
+    });
+  }
+  document.getElementById('hudRestart').addEventListener('click', resetGame);
+
+  function init() {
+    updateHud();
+    renderWorld();
+    say('bit', 'Ciao! Sono Bit 👋 Ti aiuto a capire da dove partire con il tuo sito. Come ti chiami?', function () {
+      renderNameForm();
+    });
+  }
+  init();
+})();
+</script>
