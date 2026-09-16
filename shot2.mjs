@@ -1,0 +1,11 @@
+import puppeteer from 'puppeteer-core';
+const CHROME = '/home/claude/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome';
+const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new', args: ['--no-sandbox'] });
+const page = await browser.newPage();
+await page.setViewport({ width: 420, height: 800 });
+await page.goto('http://127.0.0.1:4321/', { waitUntil: 'domcontentloaded' });
+await new Promise(r => setTimeout(r, 2000));
+await page.evaluate(() => document.querySelectorAll('button').forEach(b => b.textContent.includes('Accetta tutti') && b.click()));
+await new Promise(r => setTimeout(r, 2200));
+await page.screenshot({ path: '/home/claude/shot_fab.png' });
+await browser.close();

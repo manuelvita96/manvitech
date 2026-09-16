@@ -4,6 +4,7 @@ import Seo from '../components/Seo.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import CookieConsent from '../components/CookieConsent.tsx';
+import BitFloatingCta from '../components/BitFloatingCta.astro';
 
 interface Props {
   title: string;
@@ -19,6 +20,9 @@ interface Props {
 }
 
 const { bodyClass, lang = 'it', ...seoProps } = Astro.props;
+// La bolla "chiedi a Bit" ha senso solo sulle pagine italiane con il gioco
+// consiglio disponibile, e non sulla pagina del gioco stessa (sarebbe ridondante).
+const showBitFab = lang === 'it' && Astro.url.pathname !== '/consiglio';
 ---
 
 <!doctype html>
@@ -42,6 +46,7 @@ const { bodyClass, lang = 'it', ...seoProps } = Astro.props;
     </main>
     <Footer />
     <CookieConsent client:load />
+    {showBitFab && <BitFloatingCta />}
 
     <script>
       // Rivela gli elementi [data-reveal] quando entrano nel viewport.

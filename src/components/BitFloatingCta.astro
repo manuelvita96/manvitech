@@ -1,0 +1,124 @@
+---
+// Bolla flottante presente su (quasi) tutte le pagine: ricorda che Bit è
+// disponibile per un consiglio rapido, senza essere invadente. Compare con un
+// piccolo ritardo, si può chiudere per la sessione corrente, e non appare
+// mai nella pagina del gioco stesso (sarebbe ridondante) né nelle landing in
+// altre lingue (che non hanno la mappa/gioco).
+---
+
+<div id="bitFloatingCta" class="bit-fab-wrap" data-state="hidden">
+  <button type="button" id="bitFabClose" class="bit-fab-close" aria-label="Nascondi il suggerimento di Bit">✕</button>
+  <a href="/consiglio" id="bitFabLink" class="bit-fab" aria-label="Chiedi un consiglio veloce a Bit, la mascotte di Manvitech">
+    <span class="bit-fab-tooltip">Un consiglio veloce? 👋</span>
+    <svg viewBox="0 0 64 64" width="30" height="30" aria-hidden="true">
+      <rect x="6" y="10" width="52" height="40" rx="10" fill="#FFF7EC" />
+      <rect x="6" y="10" width="52" height="10" rx="5" fill="#ED7D31" />
+      <circle cx="13" cy="15" r="1.6" fill="#fff" opacity=".85" />
+      <circle cx="18" cy="15" r="1.6" fill="#fff" opacity=".85" />
+      <circle cx="23" cy="32" r="4.4" fill="#262626" />
+      <circle cx="41" cy="32" r="4.4" fill="#262626" />
+      <path d="M24 42q8 7 16 0" stroke="#262626" stroke-width="3" stroke-linecap="round" fill="none" />
+    </svg>
+  </a>
+</div>
+
+<script>
+  (function () {
+    var DISMISS_KEY = 'bitFabDismissed';
+    var wrap = document.getElementById('bitFloatingCta');
+    var closeBtn = document.getElementById('bitFabClose');
+    if (!wrap || !closeBtn) return;
+
+    var dismissed = false;
+    try { dismissed = sessionStorage.getItem(DISMISS_KEY) === '1'; } catch (e) {}
+    if (dismissed) return;
+
+    var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    setTimeout(function () {
+      wrap.setAttribute('data-state', 'visible');
+    }, reduceMotion ? 200 : 1400);
+
+    closeBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      wrap.setAttribute('data-state', 'hidden');
+      try { sessionStorage.setItem(DISMISS_KEY, '1'); } catch (err) {}
+    });
+  })();
+</script>
+
+<style>
+  .bit-fab-wrap {
+    position: fixed;
+    right: 1.1rem;
+    bottom: 1.1rem;
+    z-index: 45;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    opacity: 0;
+    transform: translateY(14px) scale(0.9);
+    pointer-events: none;
+    transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .bit-fab-wrap[data-state='visible'] {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+  }
+  .bit-fab {
+    position: relative;
+    display: flex;
+    height: 58px;
+    width: 58px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, #ed7d31, #f0396a);
+    box-shadow: 0 10px 30px -8px rgba(219, 106, 30, 0.55);
+    transition: transform 0.2s ease;
+  }
+  .bit-fab:hover { transform: scale(1.06); }
+  .bit-fab:hover .bit-fab-tooltip,
+  .bit-fab:focus-visible .bit-fab-tooltip { opacity: 1; transform: translateX(0); }
+  .bit-fab-tooltip {
+    position: absolute;
+    right: calc(100% + 10px);
+    top: 50%;
+    transform: translate(6px, -50%);
+    white-space: nowrap;
+    background: white;
+    color: #262626;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.45rem 0.8rem;
+    border-radius: 9999px;
+    box-shadow: 0 8px 20px -6px rgba(38, 38, 38, 0.25);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+  .bit-fab-close {
+    order: -1;
+    display: flex;
+    height: 22px;
+    width: 22px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: white;
+    border: 1px solid rgba(38, 38, 38, 0.12);
+    color: #948c82;
+    font-size: 0.65rem;
+    line-height: 1;
+    box-shadow: 0 4px 10px -4px rgba(38, 38, 38, 0.2);
+  }
+  .bit-fab-close:hover { color: #262626; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bit-fab-wrap { transition: opacity 0.2s ease; transform: none !important; }
+    .bit-fab:hover { transform: none; }
+  }
+  @media (max-width: 640px) {
+    .bit-fab-tooltip { display: none; }
+  }
+</style>
