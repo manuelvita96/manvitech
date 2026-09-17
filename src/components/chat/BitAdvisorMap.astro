@@ -226,9 +226,6 @@
     {type:'bush',   x: 355, y: 500,  s: 1},
     {type:'flower', x: 375, y: 550,  s: 1},
     {type:'pebbles',x: 340, y: 560,  s: 1},
-    {type:'town-sign', x: 42, y: 555},
-    {type:'streetlamp', x: 345, y: 470},
-    {type:'streetlamp', x: 55, y: 300},
     {type:'water',  x: 360, y: 440,  s: .9},
     {type:'flower', x: 60,  y: 440,  s: 1},
     {type:'mushroom', x: 24, y: 500,  s: 1.1},
@@ -248,7 +245,6 @@
     {type:'fence',  x: 340, y: 100,  s: .75},
     {type:'hill',   x: 60,  y: 100,  s: .8},
     {type:'tree',   x: 280, y: 60,   s: .9},
-    {type:'streetlamp', x: 340, y: 190},
     {type:'flower', x: 90,  y: 150,  s: 1},
     {type:'flower', x: 310, y: 150,  s: 1},
     {type:'bush',   x: 100, y: 190,  s: .9},
@@ -362,41 +358,6 @@
 
   // Calcola i 4 punti di una curva "a gomito" fra due nodi: il parametro bend
   // (0..1) sposta il punto di svolta più vicino ad a (bend piccolo) o a b (bend
-  // grande, vicino a 0.5 = simmetrico). Il rendering userà giunzioni arrotondate,
-  // quindi questa spezzata diventa visivamente una curva morbida, non uno spigolo.
-  function elbowPoints(a, b, bend) {
-    bend = (bend === undefined) ? 0.5 : bend;
-    var midY = a.y - (a.y - b.y) * bend;
-    return [ { x: a.x, y: a.y }, { x: a.x, y: midY }, { x: b.x, y: midY }, { x: b.x, y: b.y } ];
-  }
-  function polylineD(pts) {
-    var d = 'M ' + pts[0].x + ' ' + pts[0].y;
-    for (var i = 1; i < pts.length; i++) d += ' L ' + pts[i].x + ' ' + pts[i].y;
-    return d;
-  }
-  // Come polylineD, ma arrotonda ogni angolo con un raggio FISSO in pixel:
-  // usata per i vicoli ciechi decorativi (drawDeadEnd), dove un vero angolo
-  // netto va benissimo e non serve la curva morbida delle strade percorribili.
-  function roundedPathD(pts, radius) {
-    if (pts.length < 3) return polylineD(pts);
-    radius = radius === undefined ? 24 : radius;
-    var d = 'M ' + pts[0].x + ' ' + pts[0].y;
-    for (var i = 1; i < pts.length - 1; i++) {
-      var prev = pts[i - 1], corner = pts[i], next = pts[i + 1];
-      var distPrev = Math.hypot(prev.x - corner.x, prev.y - corner.y);
-      var distNext = Math.hypot(next.x - corner.x, next.y - corner.y);
-      var r = Math.min(radius, distPrev / 2, distNext / 2);
-      var toPrev = vUnit(vSub(prev, corner));
-      var toNext = vUnit(vSub(next, corner));
-      var p1 = { x: corner.x + toPrev.x * r, y: corner.y + toPrev.y * r };
-      var p2 = { x: corner.x + toNext.x * r, y: corner.y + toNext.y * r };
-      d += ' L ' + p1.x + ' ' + p1.y;
-      d += ' Q ' + corner.x + ' ' + corner.y + ' ' + p2.x + ' ' + p2.y;
-    }
-    var last = pts[pts.length - 1];
-    d += ' L ' + last.x + ' ' + last.y;
-    return d;
-  }
   // Curva vera (non una spezzata con angoli arrotondati): un'unica bezier
   // cubica da a a b, con le tangenti d'uscita/arrivo verticali — esattamente
   // come si incontrano i tratti dritti prima e dopo. Risultato: una svolta
@@ -406,57 +367,48 @@
     var midY = a.y - (a.y - b.y) * bend;
     return 'M ' + a.x + ' ' + a.y + ' C ' + a.x + ' ' + midY + ' ' + b.x + ' ' + midY + ' ' + b.x + ' ' + b.y;
   }
-  // trasforma la spezzata in segmenti v/h (serve solo per posizionare i ciuffi d'erba)
-  function segsFromPoints(pts) {
-    var segs = [];
-    for (var i = 0; i < pts.length - 1; i++) {
-      var A = pts[i], B = pts[i + 1];
-      if (A.x === B.x && A.y === B.y) continue;
-      if (A.x === B.x) segs.push({ o: 'v', x: A.x, y1: A.y, y2: B.y });
-      else segs.push({ o: 'h', y: A.y, x1: A.x, x2: B.x });
+  // Punto + tangente + normale sulla STESSA curva disegnata da smoothRoadD, al
+  // parametro t (0=a, 1=b). Tutto quello che deve "stare sulla strada"
+  // (ciuffi, ponti, delineatori, strisce, lampioni) usa questa funzione,
+  // così non può mai disallinearsi da quello che si vede davvero a schermo.
+  function curvePointAt(a, b, bend, t) {
+    bend = (bend === undefined) ? 0.5 : bend;
+    var midY = a.y - (a.y - b.y) * bend;
+    var c1 = { x: a.x, y: midY }, c2 = { x: b.x, y: midY };
+    var mt = 1 - t;
+    var x = mt*mt*mt*a.x + 3*mt*mt*t*c1.x + 3*mt*t*t*c2.x + t*t*t*b.x;
+    var y = mt*mt*mt*a.y + 3*mt*mt*t*c1.y + 3*mt*t*t*c2.y + t*t*t*b.y;
+    var dx = 3*mt*mt*(c1.x-a.x) + 6*mt*t*(c2.x-c1.x) + 3*t*t*(b.x-c2.x);
+    var dy = 3*mt*mt*(c1.y-a.y) + 6*mt*t*(c2.y-c1.y) + 3*t*t*(b.y-c2.y);
+    var len = Math.hypot(dx, dy) || 1;
+    return { x: x, y: y, tx: dx/len, ty: dy/len, nx: -dy/len, ny: dx/len };
+  }
+  // Campiona la curva a intervalli regolari (per lunghezza approssimativa, non
+  // per t) — serve per piazzare i ciuffi d'erba attaccati davvero al bordo.
+  function sampleCurve(a, b, bend, steps) {
+    var pts = [];
+    for (var i = 0; i <= steps; i++) pts.push(curvePointAt(a, b, bend, i / steps));
+    return pts;
+  }
+
+  // Pianta i ciuffi d'erba campionando la VERA curva disegnata (la stessa
+  // bezier di smoothRoadD), a distanza regolare e sempre appena oltre il
+  // bordo scuro della strada — qualunque sia la forma della svolta, restano
+  // sempre attaccati al bordo perché sono calcolati sullo stesso identico
+  // profilo che si vede a schermo, non su un'approssimazione a parte.
+  function addCurveTufts(parent, a, b, bend, w) {
+    var edge = w / 2 + 6;
+    var spacing = 26;
+    var samples = sampleCurve(a, b, bend, 48);
+    var acc = spacing; // il primo ciuffo compare subito, non solo dopo il primo intervallo
+    for (var i = 0; i < samples.length - 1; i++) {
+      var p0 = samples[i], p1 = samples[i + 1];
+      acc += Math.hypot(p1.x - p0.x, p1.y - p0.y);
+      if (acc < spacing) continue;
+      acc = 0;
+      parent.appendChild(el('ellipse', { cx: p1.x + p1.nx * edge, cy: p1.y + p1.ny * edge, rx: 5.5, ry: 6, fill: 'var(--grass-tuft)' }));
+      parent.appendChild(el('ellipse', { cx: p1.x - p1.nx * edge, cy: p1.y - p1.ny * edge, rx: 5.5, ry: 6, fill: 'var(--grass-tuft)' }));
     }
-    return segs;
-  }
-
-  function vUnit(v) { var len = Math.hypot(v.x, v.y) || 1; return { x: v.x/len, y: v.y/len }; }
-  function vSub(a, b) { return { x: a.x - b.x, y: a.y - b.y }; }
-
-
-  // Disegna più tratti di strada INSIEME, in due passate globali (prima tutti i bordi,
-  // poi tutti i riempimenti): così negli incroci con 3-4 rami non restano giunture
-  // sporche. Le linee usano giunzioni e terminali arrotondati: niente più spigoli.
-  function mergeIntervals(list) {
-    list.sort(function (a, b) { return a.lo - b.lo; });
-    var out = [];
-    list.forEach(function (iv) {
-      var last = out[out.length - 1];
-      if (last && iv.lo <= last.hi + 0.5) last.hi = Math.max(last.hi, iv.hi);
-      else out.push({ lo: iv.lo, hi: iv.hi });
-    });
-    return out;
-  }
-  // unisce i segmenti che condividono la stessa retta e si sovrappongono (es. due
-  // rami di un bivio che partono con lo stesso tratto iniziale): senza questo, gli
-  // stessi ciuffi venivano ridisegnati due volte nello stesso punto
-  function mergeSegs(allSegs) {
-    var vGroups = {}, hGroups = {};
-    allSegs.forEach(function (s) {
-      if (s.o === 'v') {
-        var kx = Math.round(s.x);
-        (vGroups[kx] = vGroups[kx] || []).push({ lo: Math.min(s.y1, s.y2), hi: Math.max(s.y1, s.y2) });
-      } else {
-        var ky = Math.round(s.y);
-        (hGroups[ky] = hGroups[ky] || []).push({ lo: Math.min(s.x1, s.x2), hi: Math.max(s.x1, s.x2) });
-      }
-    });
-    var merged = [];
-    Object.keys(vGroups).forEach(function (k) {
-      mergeIntervals(vGroups[k]).forEach(function (iv) { merged.push({ o: 'v', x: Number(k), y1: iv.lo, y2: iv.hi }); });
-    });
-    Object.keys(hGroups).forEach(function (k) {
-      mergeIntervals(hGroups[k]).forEach(function (iv) { merged.push({ o: 'h', y: Number(k), x1: iv.lo, x2: iv.hi }); });
-    });
-    return merged;
   }
 
   // Intersezione fra due segmenti (formula standard). Usata per capire ESATTAMENTE
@@ -508,14 +460,17 @@
     if (!rivers.length) return [];
     var bridges = [];
     pairs.forEach(function (p) {
-      var road = elbowPoints(p.a, p.b, p.bend);
+      // campiono la VERA curva disegnata (non più lo scheletro dritto): un
+      // ponte deve stare esattamente dove la strada che si vede attraversa
+      // il fiume, non dove la stava una vecchia rappresentazione geometrica
+      var road = sampleCurve(p.a, p.b, p.bend, 40);
       for (var i = 0; i < road.length - 1; i++) {
-        // un ponte ha senso solo su un tratto "dritto" nel verso di marcia
-        // (verticale): il breve raccordo orizzontale di un bivio non è mai il
-        // punto giusto per un ponte, l'incrocio con l'acqua ci finirebbe sopra
-        // per puro caso e sembrerebbe un incrocio costruito sull'acqua
-        var isVertical = Math.abs(road[i].x - road[i+1].x) < Math.abs(road[i].y - road[i+1].y);
-        if (!isVertical) continue;
+        // un ponte ha senso solo dove la strada corre "dritta" nel verso di
+        // marcia (tangente prevalentemente verticale): nel punto più curvo di
+        // un bivio la strada si muove soprattutto in orizzontale, e un ponte
+        // lì sembrerebbe un incrocio costruito sull'acqua
+        var dx = road[i+1].x - road[i].x, dy = road[i+1].y - road[i].y;
+        if (Math.abs(dx) > Math.abs(dy)) continue;
         rivers.forEach(function (r) {
           var riverPts = riverPolyline(r);
           for (var j = 0; j < riverPts.length - 1; j++) {
@@ -550,24 +505,14 @@
     g.appendChild(el('rect', { x: -2.6, y: -12, width: 5.2, height: 4, fill: '#E1483D' }));
     return g;
   }
-  // Un delineatore riflettente sul lato esterno, a metà di ogni curva vera
-  // (calcolato sulla bezier stessa, non su uno spigolo): ogni ramo ha il
-  // proprio punto medio, quindi due bivi non finiscono mai per condividerlo.
+  // Un delineatore riflettente sul lato esterno, a metà di ogni curva vera:
+  // usa la stessa curva disegnata, quindi è sempre esattamente sul bordo.
   function addCurveDelineator(parent, a, b, bend) {
     if (Math.abs(b.x - a.x) < 20) return; // quasi dritto: nessuna vera curva da segnalare
-    bend = (bend === undefined) ? 0.5 : bend;
-    var midY = a.y - (a.y - b.y) * bend;
-    var c1 = { x: a.x, y: midY }, c2 = { x: b.x, y: midY };
-    var t = 0.5, mt = 1 - t;
-    var px = mt*mt*mt*a.x + 3*mt*mt*t*c1.x + 3*mt*t*t*c2.x + t*t*t*b.x;
-    var py = mt*mt*mt*a.y + 3*mt*mt*t*c1.y + 3*mt*t*t*c2.y + t*t*t*b.y;
-    var dxdt = 3*mt*mt*(c1.x-a.x) + 6*mt*t*(c2.x-c1.x) + 3*t*t*(b.x-c2.x);
-    var dydt = 3*mt*mt*(c1.y-a.y) + 6*mt*t*(c2.y-c1.y) + 3*t*t*(b.y-c2.y);
-    var len = Math.hypot(dxdt, dydt) || 1;
-    var perp = { x: -dydt/len, y: dxdt/len };
+    var pt = curvePointAt(a, b, bend, 0.5);
     var side = (b.x > a.x) ? 1 : -1; // il lato esterno della curva
     var edge = PATH_W/2 + 9;
-    parent.appendChild(drawDelineator(px + perp.x*edge*side, py + perp.y*edge*side));
+    parent.appendChild(drawDelineator(pt.x + pt.nx*edge*side, pt.y + pt.ny*edge*side));
   }
 
 
@@ -576,12 +521,8 @@
     var isAsphalt = surface === 'asphalt';
     var edgeColor = isAsphalt ? 'var(--asphalt-edge)' : 'var(--path-edge)';
     var fillRef = isAsphalt ? 'url(#asphaltPattern)' : 'url(#pathPattern)';
-    // due rappresentazioni parallele dello stesso tracciato: "curveD" (una
-    // bezier morbida) per il disegno vero e proprio, e "pts" (la spezzata ad
-    // angoli retti) solo come riferimento geometrico per ciuffi/ponti/cammino,
-    // che lavorano su tratti dritti orizzontali/verticali
     var items = pairs.map(function (p) {
-      return { pts: elbowPoints(p.a, p.b, p.bend), curveD: smoothRoadD(p.a, p.b, p.bend), isFork: !!p.isFork };
+      return { p: p, curveD: smoothRoadD(p.a, p.b, p.bend) };
     });
     items.forEach(function (it) {
       parent.appendChild(el('path', { d: it.curveD, fill: 'none', stroke: edgeColor, 'stroke-width': w + 10, 'stroke-linecap': 'round' }));
@@ -600,18 +541,12 @@
       items.forEach(function (it) {
         parent.appendChild(el('path', { d: it.curveD, fill: 'none', stroke: 'var(--asphalt-line)', 'stroke-width': 2.4, 'stroke-linecap': 'round', 'stroke-dasharray': '13 11', opacity: 0.85 }));
       });
-      // i delineatori seguono lo scheletro dritto (approssima bene la curva);
-      // niente trattamento "ad angolo" a parte, ora che la svolta è una vera
-      // curva e non più uno spigolo
       pairs.forEach(function (p) { addCurveDelineator(parent, p.a, p.b, p.bend); });
     } else {
-      // ciuffi d'erba lungo i bordi: seguono lo scheletro dritto del tracciato
-      // (approssima bene la curva reale, che passa dagli stessi due punti)
-      var allSegs = [];
-      items.forEach(function (it) { allSegs = allSegs.concat(segsFromPoints(it.pts)); });
-      mergeSegs(allSegs).forEach(function (seg) { addTufts(parent, seg, w); });
-      // niente ciuffi "d'angolo": la svolta ora è una curva vera, non uno
-      // spigolo — i ciuffi sui tratti dritti seguono già bene il suo profilo
+      // ciuffi d'erba: campionati DIRETTAMENTE sulla curva vera (la stessa
+      // disegnata sopra), non su un'approssimazione a segmenti dritti — così
+      // restano sempre attaccati al bordo, qualunque sia la forma della svolta
+      pairs.forEach(function (p) { addCurveTufts(parent, p.a, p.b, p.bend, w); });
     }
   }
 
@@ -621,42 +556,6 @@
     pairs.forEach(function (p) { (isAsphaltPair(p) ? asphalt : dirt).push(p); });
     drawRoadSurface(parent, dirt, w, 'dirt');
     drawRoadSurface(parent, asphalt, w, 'asphalt');
-  }
-
-  function addTufts(parent, seg, w) {
-    var step = 24;
-    var edge = w / 2 + 6; // appena oltre il bordo scuro, sul confine con l'erba
-    var corner = 10; // margine minimo: i ciuffi seguono solo il tratto dritto, il più vicino possibile alla svolta
-    if (seg.o === 'v') {
-      var y0 = Math.min(seg.y1, seg.y2), y1 = Math.max(seg.y1, seg.y2);
-      var lenV = y1 - y0;
-      var marginV = Math.min(corner, lenV * 0.4);
-      if (lenV - marginV * 2 < step) {
-        // tratto corto: un solo ciuffo per lato, al centro, così non manca mai
-        var midY = (y0 + y1) / 2;
-        parent.appendChild(el('ellipse', { cx: seg.x - edge, cy: midY, rx: 5, ry: 7, fill: 'var(--grass-tuft)' }));
-        parent.appendChild(el('ellipse', { cx: seg.x + edge, cy: midY, rx: 5, ry: 7, fill: 'var(--grass-tuft)' }));
-      } else {
-        for (var y = y0 + marginV; y < y1 - marginV; y += step) {
-          parent.appendChild(el('ellipse', { cx: seg.x - edge, cy: y, rx: 5, ry: 7, fill: 'var(--grass-tuft)' }));
-          parent.appendChild(el('ellipse', { cx: seg.x + edge, cy: y + step/2, rx: 5, ry: 7, fill: 'var(--grass-tuft)' }));
-        }
-      }
-    } else {
-      var x0 = Math.min(seg.x1, seg.x2), x1 = Math.max(seg.x1, seg.x2);
-      var lenH = x1 - x0;
-      var marginH = Math.min(corner, lenH * 0.4);
-      if (lenH - marginH * 2 < step) {
-        var midX = (x0 + x1) / 2;
-        parent.appendChild(el('ellipse', { cx: midX, cy: seg.y - edge, rx: 7, ry: 5, fill: 'var(--grass-tuft)' }));
-        parent.appendChild(el('ellipse', { cx: midX, cy: seg.y + edge, rx: 7, ry: 5, fill: 'var(--grass-tuft)' }));
-      } else {
-        for (var x = x0 + marginH; x < x1 - marginH; x += step) {
-          parent.appendChild(el('ellipse', { cx: x, cy: seg.y - edge, rx: 7, ry: 5, fill: 'var(--grass-tuft)' }));
-          parent.appendChild(el('ellipse', { cx: x + step/2, cy: seg.y + edge, rx: 7, ry: 5, fill: 'var(--grass-tuft)' }));
-        }
-      }
-    }
   }
 
   // vicolo cieco decorativo: crea l'effetto "incrocio a tre vie" senza aggiungere una scelta reale
@@ -866,14 +765,12 @@
   function drawTownSign(x, y) {
     var g = el('g', { transform: 'translate(' + x + ',' + y + ')' });
     g.appendChild(el('rect', { x: -3, y: -6, width: 6, height: 46, rx: 2, fill: '#B8B4AC' }));
-    g.appendChild(el('rect', { x: -46, y: -44, width: 92, height: 40, rx: 4, fill: '#FFFFFF', stroke: '#2E6B3E', 'stroke-width': 4 }));
-    g.appendChild(el('rect', { x: -46, y: -44, width: 92, height: 10, rx: 4, fill: '#2E6B3E' }));
-    var t1 = el('text', { x: 0, y: -16, 'text-anchor': 'middle', 'font-size': '13', 'font-weight': '800', fill: '#233', 'font-family': 'inherit' });
-    t1.textContent = 'MANVITECH';
+    g.appendChild(el('rect', { x: -46, y: -50, width: 92, height: 46, rx: 4, fill: '#FFFFFF', stroke: '#2E6B3E', 'stroke-width': 4 }));
+    // freccia verso l'alto: si va in quella direzione, verso il paese
+    g.appendChild(el('path', { d: 'M 0 -46 L 8 -38 L 3 -38 L 3 -32 L -3 -32 L -3 -38 L -8 -38 Z', fill: '#2E6B3E' }));
+    var t1 = el('text', { x: 0, y: -14, 'text-anchor': 'middle', 'font-size': '13', 'font-weight': '800', fill: '#233', 'font-family': 'inherit' });
+    t1.textContent = 'manvitech';
     g.appendChild(t1);
-    var t2 = el('text', { x: 0, y: -4, 'text-anchor': 'middle', 'font-size': '8', fill: '#556', 'font-family': 'inherit' });
-    t2.textContent = 'zona artigianale';
-    g.appendChild(t2);
     return g;
   }
 
@@ -888,10 +785,11 @@
     return g;
   }
 
-  // strisce pedonali davanti all'ufficio: larghe quanto la strada asfaltata
-  // (PATH_W + cordolo), non un centimetro di più — altrimenti sconfinano nel prato
-  function drawCrosswalk(x, y) {
-    var g = el('g', { transform: 'translate(' + x + ',' + y + ')' });
+  // strisce pedonali davanti all'ufficio: larghe quanto la strada asfaltata,
+  // ruotate secondo la tangente reale della strada in quel punto (se la
+  // strada arriva storta, le strisce seguono lo stesso angolo, non restano dritte a caso)
+  function drawCrosswalk(x, y, angle) {
+    var g = el('g', { transform: 'translate(' + x + ',' + y + ') rotate(' + (angle || 0) + ')' });
     var roadW = PATH_W + 4; // deve combaciare con lo spessore del cordolo dell'asfalto
     var stripeW = 6, gap = 5.5;
     var n = Math.floor(roadW / (stripeW + gap));
@@ -919,8 +817,6 @@
       case 'hill': return drawHill(d.x, d.y, d.s);
       case 'tallgrass': return drawTallGrass(d.x, d.y, d.s);
       case 'river': return drawRiver(d.y, d.wobble || 16, { slope: d.slope || 0, loop: d.loop, side: d.side });
-      case 'town-sign': return drawTownSign(d.x, d.y);
-      case 'streetlamp': return drawStreetlamp(d.x, d.y);
     }
   }
 
@@ -1056,6 +952,7 @@
     // un'unica rete: le giunzioni agli incroci restano sempre pulite.
     var pairs = [];
     for (var i = 1; i < state.nodes.length; i++) pairs.push({ a: state.nodes[i - 1], b: state.nodes[i], bend: state.nodes[i].bend });
+    var backbone = pairs.slice(); // solo il percorso scelto: qui appendiamo l'arredo stradale (cartelli, lampioni)
 
     // i rami non scelti restano SEMPRE disegnati, esattamente come una strada
     // vera: è l'omino a scegliere una delle due, la strada non "sparisce"
@@ -1076,6 +973,34 @@
 
     drawRoadNetwork(worldG, pairs);
 
+    // arredo stradale: sempre ancorato alla VERA posizione del percorso scelto
+    // in quel momento (mai coordinate fisse), perché la strada cambia forma a
+    // ogni partita a seconda delle risposte dell'utente
+    var sideFlip = 1;
+    backbone.forEach(function (p) {
+      if (!isAsphaltPair(p)) return;
+      var mid = curvePointAt(p.a, p.b, p.bend, 0.5);
+      var off = PATH_W/2 + 34;
+      worldG.appendChild(drawStreetlamp(mid.x + mid.nx*off*sideFlip, mid.y + mid.ny*off*sideFlip));
+      sideFlip *= -1;
+    });
+    // il cartello del paese va esattamente dove lo sterrato diventa asfalto:
+    // il primo NODO del percorso già confermato che ricade in zona asfalto
+    // (non un tratto "backbone" completo, che a fine partita potrebbe già
+    // essere scorso fuori dalla vista quando viene disegnato)
+    var firstAsphaltIdx = -1;
+    for (var ni = 0; ni < state.nodes.length; ni++) {
+      if (state.nodes[ni].y <= ASPHALT_Y) { firstAsphaltIdx = ni; break; }
+    }
+    if (firstAsphaltIdx > 0) {
+      var signNode = state.nodes[firstAsphaltIdx];
+      var signIn = { a: state.nodes[firstAsphaltIdx - 1], b: signNode, bend: signNode.bend };
+      var signNormal = curvePointAt(signIn.a, signIn.b, signIn.bend, 1);
+      var signOff = PATH_W/2 + 30;
+      var signSide = signNormal.nx >= 0 ? 1 : -1;
+      worldG.appendChild(drawTownSign(signNode.x - signOff*signSide - 6*signSide, signNode.y));
+    }
+
     // dove la strada attraversa un fiume (dritto o obliquo), disegno un ponte
     computeBridges(pairs, DECOR).forEach(function (b) { worldG.appendChild(drawBridge(b.x, b.y)); });
 
@@ -1089,9 +1014,16 @@
 
     // edificio finale sempre visibile in lontananza, con tanto di strisce pedonali
     // sull'asfalto appena prima dell'ingresso — ma solo una volta che la strada ci
-    // è davvero arrivata (altrimenti comparirebbero nel prato, prima del tempo)
-    var reachedBuilding = state.nodes.some(function (n) { return n.x === buildingPoint.x && n.y === buildingPoint.y; });
-    if (reachedBuilding) worldG.appendChild(drawCrosswalk(buildingPoint.x, buildingPoint.y + 74));
+    // è davvero arrivata (altrimenti comparirebbero nel prato, prima del tempo).
+    // Piazzate esattamente sull'ultimo tratto vero (stessa curva, stessa tangente),
+    // non su un punto fisso: se la strada arriva storta, le strisce seguono l'angolo giusto.
+    var reachedBuilding = backbone.length > 0 && current.x === buildingPoint.x && current.y === buildingPoint.y;
+    if (reachedBuilding) {
+      var lastLeg = backbone[backbone.length - 1];
+      var crossPt = curvePointAt(lastLeg.a, lastLeg.b, lastLeg.bend, 0.85);
+      var angle = Math.atan2(crossPt.ty, crossPt.tx) * 180/Math.PI - 90;
+      worldG.appendChild(drawCrosswalk(crossPt.x, crossPt.y, angle));
+    }
     worldG.appendChild(drawBuilding(buildingPoint));
 
     // cartelli del bivio attivo (cliccabili), in un gruppo a parte così si possono
@@ -1199,22 +1131,15 @@
     requestAnimationFrame(tick);
   }
 
-  // Costruisce i punti intermedi lungo il percorso "a gradini" tra due nodi,
-  // così l'avatar può avanzare a piccoli passi invece di scorrere in un'unica tirata.
+  // Costruisce i punti intermedi lungo il percorso fra due nodi, campionando
+  // la stessa curva disegnata (non più lo scheletro dritto): l'omino cammina
+  // esattamente sopra alla strada che si vede, curve comprese.
   function buildWaypoints(a, b, spacing) {
-    var pts4 = elbowPoints(a, b, b.bend);
-    var segs = segsFromPoints(pts4);
-    var pts = [{ x: a.x, y: a.y }];
-    segs.forEach(function (s) {
-      var start, end;
-      if (s.o === 'v') { start = { x: s.x, y: s.y1 }; end = { x: s.x, y: s.y2 }; }
-      else { start = { x: s.x1, y: s.y }; end = { x: s.x2, y: s.y }; }
-      var dx = end.x - start.x, dy = end.y - start.y;
-      var dist = Math.sqrt(dx * dx + dy * dy);
-      var steps = Math.max(1, Math.round(dist / spacing));
-      for (var i = 1; i <= steps; i++) pts.push({ x: start.x + dx * i / steps, y: start.y + dy * i / steps });
-    });
-    return pts;
+    var approx = sampleCurve(a, b, b.bend, 40);
+    var total = 0;
+    for (var i = 1; i < approx.length; i++) total += Math.hypot(approx[i].x-approx[i-1].x, approx[i].y-approx[i-1].y);
+    var steps = Math.max(1, Math.round(total / spacing));
+    return sampleCurve(a, b, b.bend, steps);
   }
 
   function walkAvatar(fromNode, toNode, totalDuration, onDone) {
