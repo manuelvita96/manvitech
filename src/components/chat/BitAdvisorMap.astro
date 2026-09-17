@@ -374,6 +374,38 @@
     for (var i = 1; i < pts.length; i++) d += ' L ' + pts[i].x + ' ' + pts[i].y;
     return d;
   }
+  // Come polylineD, ma arrotonda ogni angolo con un raggio FISSO in pixel:
+  // usata per i vicoli ciechi decorativi (drawDeadEnd), dove un vero angolo
+  // netto va benissimo e non serve la curva morbida delle strade percorribili.
+  function roundedPathD(pts, radius) {
+    if (pts.length < 3) return polylineD(pts);
+    radius = radius === undefined ? 24 : radius;
+    var d = 'M ' + pts[0].x + ' ' + pts[0].y;
+    for (var i = 1; i < pts.length - 1; i++) {
+      var prev = pts[i - 1], corner = pts[i], next = pts[i + 1];
+      var distPrev = Math.hypot(prev.x - corner.x, prev.y - corner.y);
+      var distNext = Math.hypot(next.x - corner.x, next.y - corner.y);
+      var r = Math.min(radius, distPrev / 2, distNext / 2);
+      var toPrev = vUnit(vSub(prev, corner));
+      var toNext = vUnit(vSub(next, corner));
+      var p1 = { x: corner.x + toPrev.x * r, y: corner.y + toPrev.y * r };
+      var p2 = { x: corner.x + toNext.x * r, y: corner.y + toNext.y * r };
+      d += ' L ' + p1.x + ' ' + p1.y;
+      d += ' Q ' + corner.x + ' ' + corner.y + ' ' + p2.x + ' ' + p2.y;
+    }
+    var last = pts[pts.length - 1];
+    d += ' L ' + last.x + ' ' + last.y;
+    return d;
+  }
+  // Curva vera (non una spezzata con angoli arrotondati): un'unica bezier
+  // cubica da a a b, con le tangenti d'uscita/arrivo verticali — esattamente
+  // come si incontrano i tratti dritti prima e dopo. Risultato: una svolta
+  // che curva davvero, non uno spigolo a 90° con il bordo smussato.
+  function smoothRoadD(a, b, bend) {
+    bend = (bend === undefined) ? 0.5 : bend;
+    var midY = a.y - (a.y - b.y) * bend;
+    return 'M ' + a.x + ' ' + a.y + ' C ' + a.x + ' ' + midY + ' ' + b.x + ' ' + midY + ' ' + b.x + ' ' + b.y;
+  }
   // trasforma la spezzata in segmenti v/h (serve solo per posizionare i ciuffi d'erba)
   function segsFromPoints(pts) {
     var segs = [];
@@ -389,23 +421,6 @@
   function vUnit(v) { var len = Math.hypot(v.x, v.y) || 1; return { x: v.x/len, y: v.y/len }; }
   function vSub(a, b) { return { x: a.x - b.x, y: a.y - b.y }; }
 
-  // Pianta i ciuffi d'erba seguendo il VERO arco della curva (stesso raggio usato
-  // per arrotondare il bordo marrone): niente più "buchi" nelle svolte.
-  function addCornerTufts(parent, prevPt, corner, nextPt, w) {
-    var inDir = vUnit(vSub(corner, prevPt));
-    var outDir = vUnit(vSub(nextPt, corner));
-    var dot = inDir.x*outDir.x + inDir.y*outDir.y;
-    if (Math.abs(dot) > 0.9 || isNaN(dot)) return; // quasi dritto o segmenti degeneri: nessuna vera curva
-    // bisettrice fra le due perpendicolari ai tratti che si incontrano: un ciuffo
-    // per lato, piazzato esattamente sull'angolo, senza calcolare nessun arco
-    var perp1 = { x: -inDir.y, y: inDir.x };
-    var perp2 = { x: -outDir.y, y: outDir.x };
-    var bis = vUnit({ x: perp1.x + perp2.x, y: perp1.y + perp2.y });
-    if (!isFinite(bis.x) || !isFinite(bis.y)) return;
-    var edge = w/2 + 6; // stessa distanza dal bordo usata sui tratti dritti
-    parent.appendChild(el('ellipse', { cx: corner.x + bis.x*edge, cy: corner.y + bis.y*edge, rx: 5.5, ry: 5.5, fill: 'var(--grass-tuft)' }));
-    parent.appendChild(el('ellipse', { cx: corner.x - bis.x*edge, cy: corner.y - bis.y*edge, rx: 5.5, ry: 5.5, fill: 'var(--grass-tuft)' }));
-  }
 
   // Disegna più tratti di strada INSIEME, in due passate globali (prima tutti i bordi,
   // poi tutti i riempimenti): così negli incroci con 3-4 rami non restano giunture
@@ -495,6 +510,12 @@
     pairs.forEach(function (p) {
       var road = elbowPoints(p.a, p.b, p.bend);
       for (var i = 0; i < road.length - 1; i++) {
+        // un ponte ha senso solo su un tratto "dritto" nel verso di marcia
+        // (verticale): il breve raccordo orizzontale di un bivio non è mai il
+        // punto giusto per un ponte, l'incrocio con l'acqua ci finirebbe sopra
+        // per puro caso e sembrerebbe un incrocio costruito sull'acqua
+        var isVertical = Math.abs(road[i].x - road[i+1].x) < Math.abs(road[i].y - road[i+1].y);
+        if (!isVertical) continue;
         rivers.forEach(function (r) {
           var riverPts = riverPolyline(r);
           for (var j = 0; j < riverPts.length - 1; j++) {
@@ -529,64 +550,68 @@
     g.appendChild(el('rect', { x: -2.6, y: -12, width: 5.2, height: 4, fill: '#E1483D' }));
     return g;
   }
-
-  // Nelle curve vere (non nei tratti dritti), pianta un paio di delineatori
-  // riflettenti sul lato esterno — stessa logica geometrica di
-  // addCornerTufts, ma per l'asfalto invece dell'erba.
-  function addCornerDelineators(parent, prevPt, corner, nextPt) {
-    var inDir = vUnit(vSub(corner, prevPt));
-    var outDir = vUnit(vSub(nextPt, corner));
-    var dot = inDir.x * outDir.x + inDir.y * outDir.y;
-    if (Math.abs(dot) > 0.9 || isNaN(dot)) return;
-    var perp1 = { x: -inDir.y, y: inDir.x };
-    var perp2 = { x: -outDir.y, y: outDir.x };
-    var bis = vUnit({ x: perp1.x + perp2.x, y: perp1.y + perp2.y });
-    if (!isFinite(bis.x) || !isFinite(bis.y)) return;
-    var edge = PATH_W / 2 + 9;
-    parent.appendChild(drawDelineator(corner.x + bis.x * edge, corner.y + bis.y * edge));
-    parent.appendChild(drawDelineator(corner.x - bis.x * edge, corner.y - bis.y * edge));
+  // Un delineatore riflettente sul lato esterno, a metà di ogni curva vera
+  // (calcolato sulla bezier stessa, non su uno spigolo): ogni ramo ha il
+  // proprio punto medio, quindi due bivi non finiscono mai per condividerlo.
+  function addCurveDelineator(parent, a, b, bend) {
+    if (Math.abs(b.x - a.x) < 20) return; // quasi dritto: nessuna vera curva da segnalare
+    bend = (bend === undefined) ? 0.5 : bend;
+    var midY = a.y - (a.y - b.y) * bend;
+    var c1 = { x: a.x, y: midY }, c2 = { x: b.x, y: midY };
+    var t = 0.5, mt = 1 - t;
+    var px = mt*mt*mt*a.x + 3*mt*mt*t*c1.x + 3*mt*t*t*c2.x + t*t*t*b.x;
+    var py = mt*mt*mt*a.y + 3*mt*mt*t*c1.y + 3*mt*t*t*c2.y + t*t*t*b.y;
+    var dxdt = 3*mt*mt*(c1.x-a.x) + 6*mt*t*(c2.x-c1.x) + 3*t*t*(b.x-c2.x);
+    var dydt = 3*mt*mt*(c1.y-a.y) + 6*mt*t*(c2.y-c1.y) + 3*t*t*(b.y-c2.y);
+    var len = Math.hypot(dxdt, dydt) || 1;
+    var perp = { x: -dydt/len, y: dxdt/len };
+    var side = (b.x > a.x) ? 1 : -1; // il lato esterno della curva
+    var edge = PATH_W/2 + 9;
+    parent.appendChild(drawDelineator(px + perp.x*edge*side, py + perp.y*edge*side));
   }
+
 
   function drawRoadSurface(parent, pairs, w, surface) {
     if (!pairs.length) return;
     var isAsphalt = surface === 'asphalt';
     var edgeColor = isAsphalt ? 'var(--asphalt-edge)' : 'var(--path-edge)';
     var fillRef = isAsphalt ? 'url(#asphaltPattern)' : 'url(#pathPattern)';
-    var polylines = pairs.map(function (p) { return elbowPoints(p.a, p.b, p.bend); });
-    polylines.forEach(function (pts) {
-      parent.appendChild(el('path', { d: polylineD(pts), fill: 'none', stroke: edgeColor, 'stroke-width': w + 10, 'stroke-linejoin': 'round', 'stroke-linecap': 'butt' }));
+    // due rappresentazioni parallele dello stesso tracciato: "curveD" (una
+    // bezier morbida) per il disegno vero e proprio, e "pts" (la spezzata ad
+    // angoli retti) solo come riferimento geometrico per ciuffi/ponti/cammino,
+    // che lavorano su tratti dritti orizzontali/verticali
+    var items = pairs.map(function (p) {
+      return { pts: elbowPoints(p.a, p.b, p.bend), curveD: smoothRoadD(p.a, p.b, p.bend), isFork: !!p.isFork };
+    });
+    items.forEach(function (it) {
+      parent.appendChild(el('path', { d: it.curveD, fill: 'none', stroke: edgeColor, 'stroke-width': w + 10, 'stroke-linecap': 'round' }));
     });
     if (isAsphalt) {
       // piccolo cordolo chiaro fra asfalto e bordo scuro, come un vero marciapiede/cunetta
-      polylines.forEach(function (pts) {
-        parent.appendChild(el('path', { d: polylineD(pts), fill: 'none', stroke: 'var(--curb)', 'stroke-width': w + 4, 'stroke-linejoin': 'round', 'stroke-linecap': 'butt' }));
+      items.forEach(function (it) {
+        parent.appendChild(el('path', { d: it.curveD, fill: 'none', stroke: 'var(--curb)', 'stroke-width': w + 4, 'stroke-linecap': 'round' }));
       });
     }
-    polylines.forEach(function (pts) {
-      parent.appendChild(el('path', { d: polylineD(pts), fill: 'none', stroke: fillRef, 'stroke-width': w, 'stroke-linejoin': 'round', 'stroke-linecap': 'butt' }));
+    items.forEach(function (it) {
+      parent.appendChild(el('path', { d: it.curveD, fill: 'none', stroke: fillRef, 'stroke-width': w, 'stroke-linecap': 'round' }));
     });
     if (isAsphalt) {
       // mezzeria tratteggiata: la strada sterrata non ce l'ha, quella asfaltata sì
-      polylines.forEach(function (pts) {
-        parent.appendChild(el('path', { d: polylineD(pts), fill: 'none', stroke: 'var(--asphalt-line)', 'stroke-width': 2.4, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', 'stroke-dasharray': '13 11', opacity: 0.85 }));
+      items.forEach(function (it) {
+        parent.appendChild(el('path', { d: it.curveD, fill: 'none', stroke: 'var(--asphalt-line)', 'stroke-width': 2.4, 'stroke-linecap': 'round', 'stroke-dasharray': '13 11', opacity: 0.85 }));
       });
-      polylines.forEach(function (pts) {
-        if (pts.length === 4) {
-          addCornerDelineators(parent, pts[0], pts[1], pts[2]);
-          addCornerDelineators(parent, pts[1], pts[2], pts[3]);
-        }
-      });
+      // i delineatori seguono lo scheletro dritto (approssima bene la curva);
+      // niente trattamento "ad angolo" a parte, ora che la svolta è una vera
+      // curva e non più uno spigolo
+      pairs.forEach(function (p) { addCurveDelineator(parent, p.a, p.b, p.bend); });
     } else {
-      // ciuffi d'erba lungo i bordi: seguono il VERO tracciato (dritti + angoli)
+      // ciuffi d'erba lungo i bordi: seguono lo scheletro dritto del tracciato
+      // (approssima bene la curva reale, che passa dagli stessi due punti)
       var allSegs = [];
-      polylines.forEach(function (pts) { allSegs = allSegs.concat(segsFromPoints(pts)); });
+      items.forEach(function (it) { allSegs = allSegs.concat(segsFromPoints(it.pts)); });
       mergeSegs(allSegs).forEach(function (seg) { addTufts(parent, seg, w); });
-      polylines.forEach(function (pts) {
-        if (pts.length === 4) {
-          addCornerTufts(parent, pts[0], pts[1], pts[2], w);
-          addCornerTufts(parent, pts[1], pts[2], pts[3], w);
-        }
-      });
+      // niente ciuffi "d'angolo": la svolta ora è una curva vera, non uno
+      // spigolo — i ciuffi sui tratti dritti seguono già bene il suo profilo
     }
   }
 
@@ -863,11 +888,17 @@
     return g;
   }
 
-  // strisce pedonali davanti all'ufficio: l'ultimo dettaglio da "centro abitato"
+  // strisce pedonali davanti all'ufficio: larghe quanto la strada asfaltata
+  // (PATH_W + cordolo), non un centimetro di più — altrimenti sconfinano nel prato
   function drawCrosswalk(x, y) {
     var g = el('g', { transform: 'translate(' + x + ',' + y + ')' });
-    for (var i = -3; i <= 3; i++) {
-      g.appendChild(el('rect', { x: i * 12 - 4, y: -22, width: 8, height: 44, rx: 1.5, fill: '#F4EFE2', opacity: 0.92 }));
+    var roadW = PATH_W + 4; // deve combaciare con lo spessore del cordolo dell'asfalto
+    var stripeW = 6, gap = 5.5;
+    var n = Math.floor(roadW / (stripeW + gap));
+    var totalW = n * stripeW + (n - 1) * gap;
+    var startX = -totalW / 2 + stripeW / 2;
+    for (var i = 0; i < n; i++) {
+      g.appendChild(el('rect', { x: startX + i * (stripeW + gap) - stripeW / 2, y: -20, width: stripeW, height: 40, rx: 1.2, fill: '#F4EFE2', opacity: 0.92 }));
     }
     return g;
   }
@@ -983,14 +1014,14 @@
   var FORK_STYLES = ['y', 'innesto-sx', 'innesto-dx'];
   function getForkGeometry(stepIndex, current) {
     var style = FORK_STYLES[stepIndex % FORK_STYLES.length];
-    var L = { dx: -FORK_DX, bend: 0.5 }, R = { dx: FORK_DX, bend: 0.5 };
+    var L = { dx: -FORK_DX, bend: 0.35 }, R = { dx: FORK_DX, bend: 0.35 };
     if (style === 'innesto-sx') {
       // il sinistro si stacca presto e con più angolo, il destro resta quasi il tracciato principale
-      L = { dx: -(FORK_DX + 24), bend: 0.28 };
-      R = { dx: FORK_DX * 0.4,   bend: 0.7  };
+      L = { dx: -(FORK_DX + 24), bend: 0.22 };
+      R = { dx: FORK_DX * 0.4,   bend: 0.55  };
     } else if (style === 'innesto-dx') {
-      R = { dx: FORK_DX + 24,   bend: 0.28 };
-      L = { dx: -(FORK_DX * 0.4), bend: 0.7 };
+      R = { dx: FORK_DX + 24,   bend: 0.22 };
+      L = { dx: -(FORK_DX * 0.4), bend: 0.55 };
     }
     var leftX = current.x + L.dx, rightX = current.x + R.dx;
     // distanza minima garantita fra i due rami: cosi i cartelli non si toccano mai,
@@ -1025,8 +1056,12 @@
     // un'unica rete: le giunzioni agli incroci restano sempre pulite.
     var pairs = [];
     for (var i = 1; i < state.nodes.length; i++) pairs.push({ a: state.nodes[i - 1], b: state.nodes[i], bend: state.nodes[i].bend });
-    // i rami non scelti ai bivi passati non vengono più disegnati: si "chiudono"
-    // una volta presa la decisione (state.pastForks resta comunque per lo storico)
+
+    // i rami non scelti restano SEMPRE disegnati, esattamente come una strada
+    // vera: è l'omino a scegliere una delle due, la strada non "sparisce"
+    state.pastForks.forEach(function (f) {
+      pairs.push({ a: f.current, b: f.unchosenPt, bend: f.unchosenPt.bend, isFork: true });
+    });
 
     var current = state.nodes[state.nodes.length - 1];
 
@@ -1035,8 +1070,8 @@
       var q = getQuestion(state.stepIndex, state.data);
       var geo = getForkGeometry(state.stepIndex, current);
       active = { current: current, left: geo.left, right: geo.right, q: q };
-      pairs.push({ a: current, b: geo.left, bend: geo.left.bend });
-      pairs.push({ a: current, b: geo.right, bend: geo.right.bend });
+      pairs.push({ a: current, b: geo.left, bend: geo.left.bend, isFork: true });
+      pairs.push({ a: current, b: geo.right, bend: geo.right.bend, isFork: true });
     }
 
     drawRoadNetwork(worldG, pairs);
@@ -1048,12 +1083,15 @@
     state.pastForks.forEach(function (f) { if (f.deadEnd) drawDeadEnd(worldG, f.current, f.deadEnd); });
     if (active && DEAD_END_STEPS[state.stepIndex]) drawDeadEnd(worldG, active.current, DEAD_END_STEPS[state.stepIndex]);
 
-    // il ramo non scelto resta sempre pienamente visibile, come una vera strada
-    // (niente più "sfumato oltre la punta": creava un alone traslucido indesiderato sotto i cartelli)
+    // ogni ramo non scelto termina in modo naturale, come una stradina che
+    // porta a un punto panoramico: un sasso alla punta, non un taglio netto
+    state.pastForks.forEach(function (f) { worldG.appendChild(drawRock(f.unchosenPt.x, f.unchosenPt.y - 8, 0.6)); });
 
     // edificio finale sempre visibile in lontananza, con tanto di strisce pedonali
-    // sull'asfalto appena prima dell'ingresso: l'ultimo dettaglio da "centro abitato"
-    worldG.appendChild(drawCrosswalk(buildingPoint.x, buildingPoint.y + 78));
+    // sull'asfalto appena prima dell'ingresso — ma solo una volta che la strada ci
+    // è davvero arrivata (altrimenti comparirebbero nel prato, prima del tempo)
+    var reachedBuilding = state.nodes.some(function (n) { return n.x === buildingPoint.x && n.y === buildingPoint.y; });
+    if (reachedBuilding) worldG.appendChild(drawCrosswalk(buildingPoint.x, buildingPoint.y + 74));
     worldG.appendChild(drawBuilding(buildingPoint));
 
     // cartelli del bivio attivo (cliccabili), in un gruppo a parte così si possono
