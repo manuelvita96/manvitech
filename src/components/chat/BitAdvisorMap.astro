@@ -182,6 +182,10 @@
 
   /* ============ CONFIGURAZIONE MAPPA ============ */
   var VB_W = 400, FOCUS_Y = 370;
+  // Inquadratura speciale per l'arrivo: l'edificio va vicino alla cima dello
+  // schermo (non al solito punto fisso dell'omino), altrimenti sopra casa
+  // resterebbe un grosso vuoto di prato — non c'è altra strada oltre la meta.
+  var ARRIVAL_FOCUS_Y = 130;
   var STEP_DY = 220;
   var FORK_DX = 65;
   var X_MIN = 90, X_MAX = 310;
@@ -219,7 +223,7 @@
     {type:'flower', x: 45,  y: 700,  s: 1},
     {type:'haystack', x: 335, y: 700, s: 1},
     {type:'fruit-bush', x: 20,  y: 660,  s: .95},
-    {type:'river',  y: 980, wobble: 16, slope: 70},
+    {type:'river',  y: 900, wobble: 16, slope: 70},
     {type:'rock',   x: 355, y: 630,  s: .85},
     {type:'flower', x: 320, y: 670,  s: 1},
     {type:'fruit-tree', x: 40,  y: 580,  s: 1, fruit:'red'},
@@ -231,8 +235,8 @@
     {type:'mushroom', x: 24, y: 500,  s: 1.1},
     {type:'bush',   x: 18,  y: 480,  s: .9},
     {type:'tree',   x: 360, y: 400,  s: .9},
-    {type:'river',  y: 520, wobble: 14, loop: true, side: 'right'},
-    {type:'river',  y: 210, wobble: 14, loop: true, side: 'left'},
+    {type:'river',  y: 460, wobble: 14, loop: true, side: 'right'},
+    {type:'river',  y: 245, wobble: 14, loop: true, side: 'left'},
     {type:'rock',   x: 42,  y: 330,  s: 1},
     {type:'flower', x: 20,  y: 380,  s: 1},
     {type:'water',  x: 375, y: 350,  s: .8},
@@ -396,30 +400,24 @@
   // bordo scuro della strada — qualunque sia la forma della svolta, restano
   // sempre attaccati al bordo perché sono calcolati sullo stesso identico
   // profilo che si vede a schermo, non su un'approssimazione a parte.
-  function addCurveTufts(parent, a, b, bend, w) {
+  function addCurveTufts(parent, a, b, bend, w, junctions) {
     var edge = w / 2 + 6;
     var spacing = 26;
-    // niente ciuffi nell'ultimo tratto vicino ai due estremi: sono quasi
-    // sempre un incrocio (un bivio, o il punto in cui altri due tratti si
-    // uniscono), e i ciuffi calcolati indipendentemente da ogni tratto lì si
-    // accavallavano o lasciavano buchi. L'incrocio stesso resta pulito.
-    var margin = 22;
+    // niente ciuffi vicino a un vero incrocio (un bivio, o il punto in cui più
+    // tratti si uniscono): prima usavo solo un margine lungo la curva, ma con
+    // più tratti che convergono nello stesso punto da angoli diversi non
+    // bastava. Ora scarto qualunque candidato entro un raggio fisso da uno
+    // qualsiasi dei punti-nodo reali, indipendentemente da quale tratto lo genera.
+    var keepout = 30;
     var samples = sampleCurve(a, b, bend, 48);
-    var lens = [], total = 0;
-    for (var i = 0; i < samples.length - 1; i++) {
-      var d = Math.hypot(samples[i+1].x - samples[i].x, samples[i+1].y - samples[i].y);
-      lens.push(d);
-      total += d;
-    }
-    if (total < margin * 2 + spacing) return; // tratto troppo corto: meglio nessun ciuffo che uno fuori posto
-    var dist = 0, acc = spacing;
+    var acc = spacing;
     for (var j = 0; j < samples.length - 1; j++) {
-      dist += lens[j];
-      acc += lens[j];
-      if (dist < margin || dist > total - margin) continue;
+      var p0 = samples[j], p1 = samples[j + 1];
+      acc += Math.hypot(p1.x - p0.x, p1.y - p0.y);
       if (acc < spacing) continue;
+      var tooClose = junctions && junctions.some(function (jp) { return Math.hypot(jp.x - p1.x, jp.y - p1.y) < keepout; });
+      if (tooClose) continue;
       acc = 0;
-      var p1 = samples[j + 1];
       parent.appendChild(el('ellipse', { cx: p1.x + p1.nx * edge, cy: p1.y + p1.ny * edge, rx: 5.5, ry: 6, fill: 'var(--grass-tuft)' }));
       parent.appendChild(el('ellipse', { cx: p1.x - p1.nx * edge, cy: p1.y - p1.ny * edge, rx: 5.5, ry: 6, fill: 'var(--grass-tuft)' }));
     }
@@ -530,7 +528,7 @@
   }
 
 
-  function drawRoadSurface(parent, pairs, w, surface) {
+  function drawRoadSurface(parent, pairs, w, surface, junctions) {
     if (!pairs.length) return;
     var isAsphalt = surface === 'asphalt';
     var edgeColor = isAsphalt ? 'var(--asphalt-edge)' : 'var(--path-edge)';
@@ -560,16 +558,16 @@
       // ciuffi d'erba: campionati DIRETTAMENTE sulla curva vera (la stessa
       // disegnata sopra), non su un'approssimazione a segmenti dritti — così
       // restano sempre attaccati al bordo, qualunque sia la forma della svolta
-      pairs.forEach(function (p) { addCurveTufts(parent, p.a, p.b, p.bend, w); });
+      pairs.forEach(function (p) { addCurveTufts(parent, p.a, p.b, p.bend, w, junctions); });
     }
   }
 
-  function drawRoadNetwork(parent, pairs, w) {
+  function drawRoadNetwork(parent, pairs, w, junctions) {
     w = w || PATH_W;
     var dirt = [], asphalt = [];
     pairs.forEach(function (p) { (isAsphaltPair(p) ? asphalt : dirt).push(p); });
-    drawRoadSurface(parent, dirt, w, 'dirt');
-    drawRoadSurface(parent, asphalt, w, 'asphalt');
+    drawRoadSurface(parent, dirt, w, 'dirt', junctions);
+    drawRoadSurface(parent, asphalt, w, 'asphalt', junctions);
   }
 
   // vicolo cieco decorativo: crea l'effetto "incrocio a tre vie" senza aggiungere una scelta reale
@@ -998,7 +996,10 @@
       pairs.push({ a: current, b: geo.right, bend: geo.right.bend, isFork: true });
     }
 
-    drawRoadNetwork(worldG, pairs);
+    // ogni nodo del percorso (compresi i bivi passati) è un vero incrocio:
+    // qui vicino niente ciuffi, qualunque tratto li stia generando
+    var junctions = state.nodes.concat(state.pastForks.map(function (f) { return f.current; }));
+    drawRoadNetwork(worldG, pairs, PATH_W, junctions);
 
     // ogni bivio non ancora scelto finisce dentro un cespuglio, non con un
     // bordo arrotondato: non si sa ancora dove porti quella strada
@@ -1142,8 +1143,9 @@
     return layer;
   }
 
-  function updateCamera(node, animate, duration) {
-    var target = FOCUS_Y - node.y;
+  function updateCamera(node, animate, duration, focusY) {
+    focusY = focusY === undefined ? FOCUS_Y : focusY;
+    var target = focusY - node.y;
     if (!animate || REDUCE_MOTION) {
       worldG.setAttribute('transform', 'translate(0,' + target + ')');
       return;
@@ -1399,19 +1401,19 @@
           if (isLastQuestion) {
             var buildingPoint = { x: 200, y: NODE_Y[5], bend: 0.5 };
             state.nodes.push(buildingPoint); // ora è un nodo vero: la mappa lo ricorda sempre
-            // disegno subito il tratto di collegamento fino all'edificio, senza
-            // resettare l'omino (niente renderWorld qui, o farebbe un salto visivo);
-            // lo metto PRIMA della casa nell'ordine SVG, cosi resta sempre dietro
-            var connectorG = el('g');
-            drawRoadNetwork(connectorG, [{ a: nextNode, b: buildingPoint, bend: 0.5 }]);
-            var buildingEl = document.getElementById('buildingGroup');
-            if (buildingEl) worldG.insertBefore(connectorG, buildingEl); else worldG.appendChild(connectorG);
-            var avatarPosEl = document.getElementById('avatarPos');
-            if (avatarPosEl) worldG.appendChild(avatarPosEl); // l'omino resta sempre sopra a tutto
-            var lastLeg = REDUCE_MOTION ? 60 : 1000;
-            updateCamera(buildingPoint, true, lastLeg);
+            // ridisegno SUBITO tutta la scena finale (strada, lampioni, cartello,
+            // strisce, edificio): così l'omino le vede comparire mentre cammina
+            // verso casa, non solo una volta già arrivato
+            renderWorld();
+            var freshAvatar = document.getElementById('avatarPos');
+            if (freshAvatar) freshAvatar.setAttribute('transform', 'translate(' + nextNode.x + ',' + nextNode.y + ')');
+            var lastLeg = REDUCE_MOTION ? 60 : 1200;
+            // la telecamera si sposta verso l'inquadratura d'arrivo (edificio
+            // in alto): niente più schermo vuoto sopra casa, si vede tutto
+            // l'ultimo tratto mentre viene percorso
+            updateCamera(buildingPoint, true, lastLeg, ARRIVAL_FOCUS_Y);
             walkAvatar(nextNode, buildingPoint, lastLeg, function () {
-              updateCamera(buildingPoint, false);
+              updateCamera(buildingPoint, false, 0, ARRIVAL_FOCUS_Y);
               arriveAtBuilding();
             });
           }
