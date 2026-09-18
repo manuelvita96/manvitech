@@ -399,13 +399,27 @@
   function addCurveTufts(parent, a, b, bend, w) {
     var edge = w / 2 + 6;
     var spacing = 26;
+    // niente ciuffi nell'ultimo tratto vicino ai due estremi: sono quasi
+    // sempre un incrocio (un bivio, o il punto in cui altri due tratti si
+    // uniscono), e i ciuffi calcolati indipendentemente da ogni tratto lì si
+    // accavallavano o lasciavano buchi. L'incrocio stesso resta pulito.
+    var margin = 22;
     var samples = sampleCurve(a, b, bend, 48);
-    var acc = spacing; // il primo ciuffo compare subito, non solo dopo il primo intervallo
+    var lens = [], total = 0;
     for (var i = 0; i < samples.length - 1; i++) {
-      var p0 = samples[i], p1 = samples[i + 1];
-      acc += Math.hypot(p1.x - p0.x, p1.y - p0.y);
+      var d = Math.hypot(samples[i+1].x - samples[i].x, samples[i+1].y - samples[i].y);
+      lens.push(d);
+      total += d;
+    }
+    if (total < margin * 2 + spacing) return; // tratto troppo corto: meglio nessun ciuffo che uno fuori posto
+    var dist = 0, acc = spacing;
+    for (var j = 0; j < samples.length - 1; j++) {
+      dist += lens[j];
+      acc += lens[j];
+      if (dist < margin || dist > total - margin) continue;
       if (acc < spacing) continue;
       acc = 0;
+      var p1 = samples[j + 1];
       parent.appendChild(el('ellipse', { cx: p1.x + p1.nx * edge, cy: p1.y + p1.ny * edge, rx: 5.5, ry: 6, fill: 'var(--grass-tuft)' }));
       parent.appendChild(el('ellipse', { cx: p1.x - p1.nx * edge, cy: p1.y - p1.ny * edge, rx: 5.5, ry: 6, fill: 'var(--grass-tuft)' }));
     }
@@ -462,20 +476,20 @@
     pairs.forEach(function (p) {
       // campiono la VERA curva disegnata (non più lo scheletro dritto): un
       // ponte deve stare esattamente dove la strada che si vede attraversa
-      // il fiume, non dove la stava una vecchia rappresentazione geometrica
+      // il fiume, non dove la stava una vecchia rappresentazione geometrica.
+      // Qualunque sia l'inclinazione della strada in quel punto, il ponte la
+      // segue (viene ruotato), quindi qui non scarto più nessun incrocio.
       var road = sampleCurve(p.a, p.b, p.bend, 40);
       for (var i = 0; i < road.length - 1; i++) {
-        // un ponte ha senso solo dove la strada corre "dritta" nel verso di
-        // marcia (tangente prevalentemente verticale): nel punto più curvo di
-        // un bivio la strada si muove soprattutto in orizzontale, e un ponte
-        // lì sembrerebbe un incrocio costruito sull'acqua
-        var dx = road[i+1].x - road[i].x, dy = road[i+1].y - road[i].y;
-        if (Math.abs(dx) > Math.abs(dy)) continue;
         rivers.forEach(function (r) {
           var riverPts = riverPolyline(r);
           for (var j = 0; j < riverPts.length - 1; j++) {
             var hit = segIntersect(road[i], road[i+1], riverPts[j], riverPts[j+1]);
-            if (hit) bridges.push(hit);
+            if (hit) {
+              var dx = road[i+1].x - road[i].x, dy = road[i+1].y - road[i].y;
+              var angle = Math.atan2(dx, -dy) * 180 / Math.PI; // 0 = ponte verticale, come la strada dritta
+              bridges.push({ x: hit.x, y: hit.y, angle: angle });
+            }
           }
         });
       }
@@ -586,8 +600,7 @@
     }
     return g;
   }
-  function drawBush(x, y, scale, berries) {
-    var g = el('g', { transform: 'translate(' + x + ',' + y + ') scale(' + scale + ')' });
+  function drawBush(x, y, scale, berries) {    var g = el('g', { transform: 'translate(' + x + ',' + y + ') scale(' + scale + ')' });
     g.appendChild(el('ellipse', { cx: 0, cy: 3, rx: 13, ry: 4, fill: '#000', opacity: 0.12 }));
     g.appendChild(el('circle', { cx: -6, cy: -3, r: 8, fill: 'var(--grass-dark)' }));
     g.appendChild(el('circle', { cx: 6, cy: -3, r: 9, fill: 'var(--grass-2)' }));
@@ -597,6 +610,20 @@
         g.appendChild(el('circle', { cx: p[0], cy: p[1], r: 1.8, fill: '#6B3FA0' }));
       });
     }
+    return g;
+  }
+  // Un cespuglio largo quanto la strada: chiude la vista proprio dove un
+  // bivio non ancora scelto finisce, al posto di un semplice bordo
+  // arrotondato — non si sa ancora dove porti quella strada.
+  function drawRoadBushCap(x, y, w) {
+    w = w || PATH_W;
+    var g = el('g', { transform: 'translate(' + x + ',' + y + ')' });
+    g.appendChild(el('ellipse', { cx: 0, cy: 6, rx: w/2 + 6, ry: 7, fill: '#000', opacity: 0.14 }));
+    var half = w/2;
+    [[-half*0.55, -2, 15], [half*0.55, -2, 15], [0, -10, 16], [-half*0.15, 4, 12], [half*0.2, 5, 12]].forEach(function (c, i) {
+      g.appendChild(el('circle', { cx: c[0], cy: c[1], r: c[2], fill: i % 2 ? 'var(--grass-2)' : 'var(--grass-dark)' }));
+    });
+    g.appendChild(el('circle', { cx: 0, cy: -8, r: 11, fill: 'var(--grass-1)' }));
     return g;
   }
   function drawRock(x, y, scale) {
@@ -737,8 +764,8 @@
   }
 
   // ponte in legno: dove la strada attraversa un fiume, ha senso che ci sia un guado costruito
-  function drawBridge(x, y) {
-    var g = el('g', { transform: 'translate(' + x + ',' + y + ')' });
+  function drawBridge(x, y, angle) {
+    var g = el('g', { transform: 'translate(' + x + ',' + y + ') rotate(' + (angle || 0) + ')' });
     var w = 42, h = 46;
     g.appendChild(el('ellipse', { cx: 0, cy: h/2 + 3, rx: w/2 + 8, ry: 6, fill: '#000', opacity: 0.14 }));
     // piloni che affondano nell'acqua, ai due lati del ponte
@@ -973,6 +1000,13 @@
 
     drawRoadNetwork(worldG, pairs);
 
+    // ogni bivio non ancora scelto finisce dentro un cespuglio, non con un
+    // bordo arrotondato: non si sa ancora dove porti quella strada
+    if (active) {
+      worldG.appendChild(drawRoadBushCap(active.left.x, active.left.y));
+      worldG.appendChild(drawRoadBushCap(active.right.x, active.right.y));
+    }
+
     // arredo stradale: sempre ancorato alla VERA posizione del percorso scelto
     // in quel momento (mai coordinate fisse), perché la strada cambia forma a
     // ogni partita a seconda delle risposte dell'utente
@@ -1002,7 +1036,7 @@
     }
 
     // dove la strada attraversa un fiume (dritto o obliquo), disegno un ponte
-    computeBridges(pairs, DECOR).forEach(function (b) { worldG.appendChild(drawBridge(b.x, b.y)); });
+    computeBridges(pairs, DECOR).forEach(function (b) { worldG.appendChild(drawBridge(b.x, b.y, b.angle)); });
 
     // vicoli ciechi decorativi (passati + quello del bivio attivo)
     state.pastForks.forEach(function (f) { if (f.deadEnd) drawDeadEnd(worldG, f.current, f.deadEnd); });
@@ -1052,9 +1086,15 @@
     var layer = el('g', { id: 'activeForkBadges' });
     [ [active.left, active.q.left, 'left', 0], [active.right, active.q.right, 'right', 1] ].forEach(function (pair) {
       var pt = pair[0], opt = pair[1], side = pair[2], stagger = pair[3];
+      // il cartello sta di fianco alla strada (non sopra, a bloccare la vista
+      // di dove sparisce nel cespuglio): spostato di lato in orizzontale,
+      // ma senza mai far uscire il pannello dal viewBox (400 di larghezza)
+      var panelHalf = 56;
+      var signX = pt.x + (side === 'left' ? -(PATH_W/2 + 34) : (PATH_W/2 + 34));
+      signX = Math.max(panelHalf, Math.min(400 - panelHalf, signX));
       var g = el('g', {
         class: 'fork-hint',
-        transform: 'translate(' + pt.x + ',' + pt.y + ')',
+        transform: 'translate(' + signX + ',' + pt.y + ')',
         tabindex: '0',
         role: 'button',
         'aria-label': 'Scegli: ' + opt.label
