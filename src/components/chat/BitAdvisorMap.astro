@@ -235,8 +235,8 @@
     {type:'mushroom', x: 24, y: 500,  s: 1.1},
     {type:'bush',   x: 18,  y: 480,  s: .9},
     {type:'tree',   x: 360, y: 400,  s: .9},
-    {type:'river',  y: 460, wobble: 14, loop: true, side: 'right'},
-    {type:'river',  y: 245, wobble: 14, loop: true, side: 'left'},
+    {type:'lake',   x: 335, y: 460, s: 1},
+    {type:'lake',   x: 55,  y: 245, s: .9},
     {type:'rock',   x: 42,  y: 330,  s: 1},
     {type:'flower', x: 20,  y: 380,  s: 1},
     {type:'water',  x: 375, y: 350,  s: .8},
@@ -650,6 +650,29 @@
     return g;
   }
 
+  // Un laghetto vero e proprio, molto più grande di uno stagno decorativo:
+  // un ostacolo intorno a cui la strada gira, con qualche giunco sul bordo.
+  function drawLake(x, y, scale) {
+    scale = scale || 1;
+    var g = el('g', { transform: 'translate(' + x + ',' + y + ') scale(' + scale + ')' });
+    g.appendChild(el('ellipse', { cx: 4, cy: 8, rx: 80, ry: 54, fill: 'var(--path-1)', opacity: 0.4 }));
+    g.appendChild(el('path', {
+      d: 'M -70 -10 Q -60 -50 -10 -48 Q 40 -46 62 -14 Q 78 12 48 34 Q 14 54 -28 44 Q -68 34 -72 8 Q -74 -2 -70 -10 Z',
+      fill: 'var(--water-2)'
+    }));
+    g.appendChild(el('path', {
+      d: 'M -50 -18 Q -34 -34 -2 -30 Q 22 -26 30 -10 Q 20 2 -8 4 Q -38 6 -50 -6 Z',
+      fill: 'var(--water-1)'
+    }));
+    g.appendChild(el('path', { d: 'M -40 -18 Q -26 -24 -12 -18', stroke: 'white', 'stroke-width': 2, fill: 'none', opacity: 0.6 }));
+    g.appendChild(el('path', { d: 'M 4 8 Q 18 4 28 12', stroke: 'white', 'stroke-width': 1.6, fill: 'none', opacity: 0.5 }));
+    [[-66, 20], [54, 24], [-8, 46]].forEach(function (p) {
+      g.appendChild(el('path', { d: 'M ' + p[0] + ' ' + p[1] + ' q -2 -14 2 -22', stroke: '#3E7A3F', 'stroke-width': 2.4, fill: 'none', 'stroke-linecap': 'round' }));
+      g.appendChild(el('path', { d: 'M ' + (p[0] + 6) + ' ' + p[1] + ' q -1 -10 3 -16', stroke: '#4E8F4F', 'stroke-width': 2.2, fill: 'none', 'stroke-linecap': 'round' }));
+    });
+    return g;
+  }
+
   function drawPebbles(x, y, scale) {
     var g = el('g', { transform: 'translate(' + x + ',' + y + ') scale(' + (scale||1) + ')' });
     var pts = [[-8,0,4],[2,-3,3],[8,2,3.4],[-2,5,2.6]];
@@ -835,6 +858,7 @@
       case 'rock': return drawRock(d.x, d.y, d.s);
       case 'flower': return drawFlowers(d.x, d.y);
       case 'water': return drawWater(d.x, d.y);
+      case 'lake': return drawLake(d.x, d.y, d.s);
       case 'pebbles': return drawPebbles(d.x, d.y, d.s);
       case 'mushroom': return drawMushroom(d.x, d.y, d.s);
       case 'fence': return drawFence(d.x, d.y, d.s);
@@ -1068,7 +1092,10 @@
     // avatar
     worldG.appendChild(drawAvatar(current));
 
-    updateCamera(current, false);
+    // una volta arrivati, la telecamera resta sull'inquadratura d'arrivo
+    // (edificio in alto) anche nei render successivi — es. riaprendo la
+    // pagina a metà form email — non torna mai più a quella "bassa" normale
+    updateCamera(current, false, 0, reachedBuilding ? ARRIVAL_FOCUS_Y : undefined);
   }
 
   function wrapLabel(label, maxChars) {
