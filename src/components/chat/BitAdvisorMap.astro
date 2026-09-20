@@ -235,8 +235,8 @@
     {type:'mushroom', x: 24, y: 500,  s: 1.1},
     {type:'bush',   x: 18,  y: 480,  s: .9},
     {type:'tree',   x: 360, y: 400,  s: .9},
-    {type:'lake',   x: 335, y: 460, s: 1},
-    {type:'lake',   x: 55,  y: 245, s: .9},
+    {type:'lake',   x: 410, y: 460, s: .55},
+    {type:'lake',   x: -10, y: 245, s: .55},
     {type:'rock',   x: 42,  y: 330,  s: 1},
     {type:'flower', x: 20,  y: 380,  s: 1},
     {type:'water',  x: 375, y: 350,  s: .8},
@@ -1038,7 +1038,12 @@
     var sideFlip = 1;
     backbone.forEach(function (p) {
       if (!isAsphaltPair(p)) return;
-      var mid = curvePointAt(p.a, p.b, p.bend, 0.5);
+      // NON al centro della curva: lì la strada punta più in orizzontale che
+      // in verticale, quindi "spostarsi perpendicolarmente" sposta il lampione
+      // lungo la strada invece che fuori da essa (finiva in mezzo all'asfalto).
+      // Vicino a un estremo la tangente è sempre quasi verticale per costruzione,
+      // quindi la normale è affidabilmente orizzontale: il lampione va di lato per davvero.
+      var mid = curvePointAt(p.a, p.b, p.bend, 0.2);
       var off = PATH_W/2 + 34;
       worldG.appendChild(drawStreetlamp(mid.x + mid.nx*off*sideFlip, mid.y + mid.ny*off*sideFlip));
       sideFlip *= -1;
@@ -1445,9 +1450,13 @@
             });
           }
         });
-        updateCamera(nextNode, true, walkDur);
-
+        // per l'ultima domanda NON inseguo prima nextNode con l'inquadratura
+        // normale: sarebbe un primo scatto di camera inutile, subito seguito
+        // da quello verso l'inquadratura d'arrivo — un doppio movimento innaturale.
+        // Meglio restare fermi durante questo tratto e muoversi una volta sola,
+        // dritti verso l'inquadratura d'arrivo, quando l'omino riparte verso casa.
         if (!isLastQuestion) {
+          updateCamera(nextNode, true, walkDur);
           setTimeout(function () { state.phase = 'question'; updateHud(); askCurrentQuestion(); }, walkDur + 150);
         } else {
           updateHud();
