@@ -1,5 +1,11 @@
 ---
+import { getCollection } from 'astro:content';
+import { shortLabel, EMERGENCY_TEL, EMERGENCY_TEL_LABEL } from '../data/serviceLabels';
+
 const year = new Date().getFullYear();
+const quick = (await getCollection('pages'))
+  .filter((p) => p.data.order >= 10)
+  .sort((a, b) => a.data.order - b.data.order);
 
 const columns = [
   {
@@ -12,6 +18,10 @@ const columns = [
       { label: 'Design', href: '/servizi/design' },
       { label: 'Manutenzione', href: '/servizi/manutenzione-e-assistenza' },
     ],
+  },
+  {
+    title: 'Interventi rapidi',
+    links: quick.map((p) => ({ label: shortLabel(p.id, p.data.title), href: `/servizi/${p.id}` })),
   },
   {
     title: 'Azienda',
@@ -36,12 +46,15 @@ const columns = [
 
 <footer class="border-t border-ink-100 bg-ink-950 text-ink-300">
   <div class="container-page py-16">
-    <div class="grid grid-cols-2 gap-10 sm:grid-cols-4">
+    <div class="grid grid-cols-2 gap-10 sm:grid-cols-3 lg:grid-cols-6">
       <div class="col-span-2">
         <img src="/images/logo.png" alt="Manvitech" class="h-8 w-auto" />
         <p class="mt-4 max-w-xs text-sm leading-relaxed text-ink-400">
           Siti internet, SEO e presenza social per chi vuole farsi notare online.
         </p>
+        <a href={`tel:${EMERGENCY_TEL}`} class="mt-4 inline-block text-sm font-medium text-brand-400 hover:underline">
+          Pronto intervento siti: {EMERGENCY_TEL_LABEL}
+        </a>
         <div class="mt-5 flex gap-3">
           <a href="https://facebook.com/manvitech" aria-label="Facebook" class="footer-social">FB</a>
           <a href="https://instagram.com/manvitech" aria-label="Instagram" class="footer-social">IG</a>

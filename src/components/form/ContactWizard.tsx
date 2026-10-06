@@ -26,7 +26,8 @@ const initialData: FormData = {
 
 const SERVICE_TYPES = [
   { value: 'nuovo-sito', label: 'Un nuovo sito internet' },
-  { value: 'consulenza-sito-esistente', label: 'Consulenza sul mio sito attuale' },
+  { value: 'consulenza-sito-esistente', label: 'Check gratuito / consulenza sul mio sito attuale' },
+  { value: 'intervento-rapido', label: 'Un intervento rapido (hacker, hosting, email, domini...)' },
   { value: 'seo', label: 'SEO e visibilità su Google' },
   { value: 'social', label: 'Gestione dei social' },
   { value: 'design', label: "Design e immagine del brand" },
@@ -69,9 +70,11 @@ const BRANCH_QUESTIONS: Record<
     hint: "Se vuoi, lascia anche il link del tuo sito qui sotto: ci diamo un'occhiata prima di sentirci.",
     withUrl: true,
     options: [
+      { value: 'sicurezza', label: 'Problemi di sicurezza / attacco hacker' },
       { value: 'lento', label: 'È lento' },
-      { value: 'vecchio', label: 'Ha un design vecchio' },
-      { value: 'pochi-clienti', label: 'Non porta clienti' },
+      { value: 'vecchio', label: 'È vecchio o non si aggiorna più' },
+      { value: 'usabilita', label: 'Difficile da usare o non porta clienti' },
+      { value: 'costi', label: 'Mi costa troppo' },
       { value: 'non-so', label: 'Non saprei dire' },
     ],
   },

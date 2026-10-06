@@ -26,3 +26,5 @@ Ottimizziamo inoltre ogni immagine in formati moderni, carichiamo solo il codice
 ## Il risultato
 
 Un punteggio prestazionale che si avvicina al massimo, un posizionamento più solido nei motori di ricerca, e un'esperienza che i tuoi clienti percepiscono, anche se non sanno spiegare esattamente perché.
+
+Se il tuo sito è lento e non sai da dove partire, guarda come lavoriamo sulla <a href="/servizi/velocita-sito-a-pacchetto">velocità del sito</a>: misuriamo prima e dopo, così vedi cosa cambia.

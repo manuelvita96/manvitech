@@ -1,28 +1,41 @@
 # Manvitech
 
-> Manvitech è un'agenzia italiana specializzata nella realizzazione di siti internet,
-> ottimizzazione SEO e gestione della presenza social per piccole e medie attività
-> e professionisti.
-
-Manvitech progetta siti web veloci, moderni e su misura, con particolare attenzione
-alle performance, alla SEO e alla visibilità nei motori di ricerca e negli assistenti AI.
+> Manvitech è un'agenzia italiana (Fucecchio, FI) che realizza siti internet, SEO e
+> gestione social, e offre consulenza e interventi rapidi su siti già esistenti:
+> sicurezza, velocità, aggiornamenti, hosting, email e domini. Lavora in tutta Italia,
+> da remoto, soprattutto per piccole attività e professionisti.
 
 ## Servizi principali
 
-- Realizzazione siti internet (vetrina, e-commerce, siti dinamici)
-- SEO e posizionamento organico sui motori di ricerca
-- Gestione e strategia dei canali social
-- Graphic design e identità visiva
+- Siti internet: https://manvitech.it/servizi/siti-internet
+- SEO e visibilità: https://manvitech.it/servizi/seo
+- Social media: https://manvitech.it/servizi/social
+- Design: https://manvitech.it/servizi/design
+- Manutenzione e assistenza: https://manvitech.it/servizi/manutenzione-e-assistenza
 
-## Pagine utili
+## Consulenza e interventi rapidi su siti esistenti
 
-- Homepage: https://manvitech.it/
-- Servizi: https://manvitech.it/servizi
+Check iniziale gratuito. Piattaforme: WordPress, WooCommerce, Joomla, Drupal, PrestaShop,
+Shopify, Wix, Squarespace e siti su misura. I prezzi non sono pubblici: ogni caso viene valutato.
+
+- Consulenza sito esistente: https://manvitech.it/servizi/consulenza-sito-esistente
+- Sito hackerato, pulizia e ripristino (pronto intervento): https://manvitech.it/servizi/sito-hackerato-pulizia-e-ripristino
+- Migrazione hosting: https://manvitech.it/servizi/migrazione-hosting
+- Velocità del sito: https://manvitech.it/servizi/velocita-sito-a-pacchetto
+- Email aziendale in spam (SPF, DKIM, DMARC): https://manvitech.it/servizi/email-aziendale-in-spam
+- Aggiornamento sicuro di WordPress, PHP e plugin: https://manvitech.it/servizi/aggiornamento-sicuro-wordpress
+- Google Business Profile: https://manvitech.it/servizi/google-business-profile
+- Pacchetto ore prepagato: https://manvitech.it/servizi/pacchetto-ore-prepagato
+- Gestione domini e DNS: https://manvitech.it/servizi/gestione-domini-e-dns
+
+## Altre pagine
+
 - Blog: https://manvitech.it/blog
-- Portfolio: https://manvitech.it/portfolio
+- Zone servite: https://manvitech.it/zone
 - Contatti: https://manvitech.it/contatti
 
 ## Contatti
 
 Sito: https://manvitech.it
 Email: info@manvitech.it
+Telefono (anche emergenze): +39 345 0639886

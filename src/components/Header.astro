@@ -1,8 +1,14 @@
 ---
 import LanguageSwitcher from './LanguageSwitcher.astro';
+import { getCollection } from 'astro:content';
+import { shortLabel, EMERGENCY_TEL, EMERGENCY_TEL_LABEL } from '../data/serviceLabels';
+
+const pages = (await getCollection('pages')).sort((a, b) => a.data.order - b.data.order);
+const mainServices = pages.filter((p) => p.data.order < 10);
+const quickServices = pages.filter((p) => p.data.order >= 10);
 
 const navItems = [
-  { label: 'Servizi', href: '/servizi' },
+  { label: 'Servizi', href: '/servizi', menu: true },
   { label: 'Blog', href: '/blog' },
   { label: 'Chi siamo', href: '/chi-siamo' },
 ];
@@ -19,16 +25,45 @@ const currentPath = Astro.url.pathname;
     <nav class="hidden items-center gap-1 lg:flex" aria-label="Navigazione principale">
       {navItems.map((item) => {
         const isActive = currentPath === item.href || currentPath.startsWith(item.href + '/');
-        return (
-          <a
-            href={item.href}
-            class:list={[
-              'rounded-full px-4 py-2 text-sm font-medium transition-colors',
-              isActive ? 'text-brand-600 bg-brand-50' : 'text-ink-600 hover:text-brand-600 hover:bg-ink-50',
-            ]}
-          >
-            {item.label}
-          </a>
+        const cls = [
+          'rounded-full px-4 py-2 text-sm font-medium transition-colors',
+          isActive ? 'text-brand-600 bg-brand-50' : 'text-ink-600 hover:text-brand-600 hover:bg-ink-50',
+        ];
+        return item.menu ? (
+          <div class="group relative">
+            <a href={item.href} class:list={[...cls, 'inline-flex items-center gap-1']}>
+              {item.label}
+              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m19 9-7 7-7-7" /></svg>
+            </a>
+            <div class="invisible absolute left-0 top-full z-50 w-[34rem] pt-2 opacity-0 transition group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
+              <div class="overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-xl">
+                <div class="grid grid-cols-2 gap-6 p-5">
+                  <div>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-ink-400">Servizi</p>
+                    <ul class="mt-3 space-y-1">
+                      {mainServices.map((p) => (
+                        <li><a href={`/servizi/${p.id}`} class="block rounded-lg px-2 py-1.5 text-sm text-ink-700 hover:bg-brand-50 hover:text-brand-600">{shortLabel(p.id, p.data.title)}</a></li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-ink-400">Interventi rapidi</p>
+                    <ul class="mt-3 space-y-1">
+                      {quickServices.map((p) => (
+                        <li><a href={`/servizi/${p.id}`} class="block rounded-lg px-2 py-1.5 text-sm text-ink-700 hover:bg-brand-50 hover:text-brand-600">{shortLabel(p.id, p.data.title)}</a></li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+                <a href={`tel:${EMERGENCY_TEL}`} class="flex items-center justify-between bg-red-50 px-5 py-3 text-sm font-medium text-red-700 hover:bg-red-100">
+                  <span>Sito hackerato o offline? Pronto intervento</span>
+                  <span class="font-semibold">{EMERGENCY_TEL_LABEL}</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <a href={item.href} class:list={cls}>{item.label}</a>
         );
       })}
     </nav>
@@ -61,11 +96,29 @@ const currentPath = Astro.url.pathname;
     aria-label="Navigazione mobile"
   >
     <div class="container-page flex flex-col gap-1 py-4">
-      {navItems.map((item) => (
-        <a href={item.href} class="rounded-xl px-4 py-3 text-base font-medium text-ink-700 hover:bg-ink-50">
-          {item.label}
-        </a>
+      {navItems.map((item) => item.menu ? (
+        <details class="group">
+          <summary class="flex cursor-pointer list-none items-center justify-between rounded-xl px-4 py-3 text-base font-medium text-ink-700 hover:bg-ink-50">
+            {item.label}
+            <svg class="h-4 w-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m19 9-7 7-7-7" /></svg>
+          </summary>
+          <div class="ml-4 flex flex-col border-l border-ink-100 pl-3">
+            <a href={item.href} class="rounded-lg px-3 py-2 text-sm font-semibold text-brand-600">Tutti i servizi</a>
+            {mainServices.map((p) => (
+              <a href={`/servizi/${p.id}`} class="rounded-lg px-3 py-2 text-sm text-ink-700 hover:bg-ink-50">{shortLabel(p.id, p.data.title)}</a>
+            ))}
+            <p class="px-3 pt-3 text-xs font-semibold uppercase tracking-wide text-ink-400">Interventi rapidi</p>
+            {quickServices.map((p) => (
+              <a href={`/servizi/${p.id}`} class="rounded-lg px-3 py-2 text-sm text-ink-700 hover:bg-ink-50">{shortLabel(p.id, p.data.title)}</a>
+            ))}
+          </div>
+        </details>
+      ) : (
+        <a href={item.href} class="rounded-xl px-4 py-3 text-base font-medium text-ink-700 hover:bg-ink-50">{item.label}</a>
       ))}
+      <a href={`tel:${EMERGENCY_TEL}`} class="mt-1 rounded-xl bg-red-50 px-4 py-3 text-center text-sm font-semibold text-red-700">
+        Sito hackerato? Chiama {EMERGENCY_TEL_LABEL}
+      </a>
       <a href="/contatti" class="btn-primary mt-2 w-full">Parliamo del tuo progetto</a>
       <div class="mt-3 flex justify-center border-t border-ink-100 pt-3">
         <LanguageSwitcher />

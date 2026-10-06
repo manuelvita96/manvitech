@@ -24,7 +24,10 @@ const {
   modifiedTime,
 } = Astro.props;
 
+import { getCollection } from 'astro:content';
+
 const siteName = 'Manvitech';
+const allServices = await getCollection('pages');
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 const absoluteImage = new URL(image, Astro.site);
 const fullTitle = title.includes(siteName) ? title : `${title} | ${siteName}`;
@@ -41,7 +44,21 @@ const organizationSchema = {
   logo: new URL('/images/logo.png', Astro.site).toString(),
   image: new URL('/images/og-default.jpg', Astro.site).toString(),
   description:
-    'Realizzazione siti internet, gestione social e consulenza SEO per attività e professionisti.',
+    'Realizzazione siti internet, SEO, gestione social e consulenza su siti esistenti (sicurezza, velocità, hosting) per piccole attività e professionisti in tutta Italia.',
+  areaServed: { '@type': 'Country', name: 'Italia' },
+  knowsAbout: ['WordPress', 'Sicurezza dei siti web', 'Ottimizzazione della velocità', 'SEO', 'Hosting', 'Google Business Profile'],
+  hasOfferCatalog: {
+    '@type': 'OfferCatalog',
+    name: 'Servizi Manvitech',
+    itemListElement: allServices.map((p) => ({
+      '@type': 'Offer',
+      itemOffered: {
+        '@type': 'Service',
+        name: p.data.title,
+        url: new URL(`/servizi/${p.id}`, 'https://manvitech.it').toString(),
+      },
+    })),
+  },
   telephone: '+39-345-0639886',
   email: 'info@manvitech.it',
   address: {

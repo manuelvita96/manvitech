@@ -6,6 +6,7 @@ import DeviceShowcase from '../components/sections/DeviceShowcase.astro';
 import Services from '../components/sections/Services.astro';
 import AskBit from '../components/sections/AskBit.astro';
 import ExistingSiteCta from '../components/sections/ExistingSiteCta.astro';
+import QuickFixes from '../components/sections/QuickFixes.astro';
 import SpeedCompare from '../components/sections/SpeedCompare.astro';
 import WhyUs from '../components/sections/WhyUs.astro';
 import Process from '../components/sections/Process.astro';
@@ -19,7 +20,7 @@ const jsonLd = {
   '@id': 'https://manvitech.it/#website',
   url: 'https://manvitech.it',
   name: 'Manvitech',
-  description: 'Realizzazione siti internet, SEO e gestione social per attività e professionisti in Italia.',
+  description: 'Realizzazione siti internet, SEO e social, più consulenza e interventi rapidi su siti esistenti (sicurezza, velocità, hosting) per attività e professionisti in Italia.',
   inLanguage: 'it-IT',
   publisher: { '@id': 'https://manvitech.it/#organization' },
 };
@@ -46,6 +47,16 @@ const homeFaq = [
       'Sì, ti mostriamo come aggiornare testi, immagini e articoli del blog in autonomia. Se preferisci non pensarci, offriamo anche un servizio di manutenzione continua.',
   },
   {
+    question: 'Il mio sito è lento, vecchio o è stato hackerato: potete aiutarmi?',
+    answer:
+      'Sì. Oltre a creare siti nuovi, ci occupiamo di quelli già esistenti: pulizia dopo un attacco, aggiornamenti sicuri, velocizzazione, migrazione hosting e riduzione dei costi. Il primo check è gratuito.',
+  },
+  {
+    question: 'Lavorate anche su siti fatti da altri o con altri CMS?',
+    answer:
+      'Sì, lavoriamo su WordPress, WooCommerce, Joomla, Drupal, PrestaShop, Shopify, Wix, Squarespace e siti su misura, anche se non li abbiamo realizzati noi.',
+  },
+  {
     question: 'Lavorate solo con attività della zona di Fucecchio?',
     answer:
       'No, lavoriamo con clienti in tutta Italia. Conosciamo bene il territorio intorno a Fucecchio, ma gran parte del progetto si segue comodamente online ovunque tu sia.',
@@ -54,8 +65,8 @@ const homeFaq = [
 ---
 
 <Layout
-  title="Manvitech — Siti internet, SEO e social marketing"
-  description="Realizziamo siti internet veloci, moderni e su misura. Design curato, SEO e gestione social per far crescere la tua attività online."
+  title="Manvitech: siti internet, sicurezza, SEO e social"
+  description="Siti internet veloci e su misura, SEO e social. Il tuo sito è lento, vecchio o hackerato? Consulenza e interventi rapidi in tutta Italia."
   jsonLd={jsonLd}
 >
   <HreflangLinks slot="head" />
@@ -64,6 +75,7 @@ const homeFaq = [
   <Services />
   <AskBit />
   <ExistingSiteCta />
+  <QuickFixes />
   <SpeedCompare />
   <WhyUs />
   <Process />

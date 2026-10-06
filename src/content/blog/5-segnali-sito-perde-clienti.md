@@ -32,3 +32,5 @@ Se l'ultima volta che qualcuno ha guardato il tuo sito con occhio critico è sta
 ## Cosa fare a questo punto
 
 Non serve buttare via tutto: a volte basta capire dove sta il problema per sistemarlo senza rifare l'intero sito. È esattamente il motivo per cui offriamo una <a href="/servizi/consulenza-sito-esistente">consulenza dedicata ai siti già esistenti</a>: un'analisi onesta, con un report chiaro su cosa non va e come sistemarlo.
+
+Se invece il problema è la sicurezza o la lentezza, trovi gli <a href="/servizi">interventi rapidi</a> per sistemare un punto preciso senza rifare tutto.

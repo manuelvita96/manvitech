@@ -1,6 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import { shortLabel } from '../../data/serviceLabels';
 import Faq from '../../components/Faq.astro';
 import ChecklistLeadMagnet from '../../components/form/ChecklistLeadMagnet.tsx';
 import { getCollection, render } from 'astro:content';
@@ -16,8 +17,9 @@ export async function getStaticPaths() {
 const { service, allServices } = Astro.props;
 const { Content } = await render(service);
 
+const isQuick = service.data.order >= 10;
 const otherServices = allServices
-  .filter((s) => s.id !== service.id)
+  .filter((s) => s.id !== service.id && (s.data.order >= 10) === isQuick)
   .sort((a, b) => a.data.order - b.data.order)
   .slice(0, 3);
 
@@ -26,12 +28,14 @@ const jsonLd = {
   '@type': 'Service',
   name: service.data.title,
   description: service.data.description,
+  url: new URL(`/servizi/${service.id}`, 'https://manvitech.it').toString(),
+  serviceType: service.data.seoTitle ?? service.data.title,
   provider: { '@id': 'https://manvitech.it/#organization' },
-  areaServed: 'IT',
+  areaServed: { '@type': 'Country', name: 'Italia' },
 };
 ---
 
-<Layout title={service.data.title} description={service.data.description} jsonLd={jsonLd}>
+<Layout title={service.data.seoTitle ?? service.data.title} description={service.data.description} jsonLd={jsonLd}>
   <Breadcrumbs items={[{ label: 'Servizi', href: '/servizi' }, { label: service.data.title, href: `/servizi/${service.id}` }]} />
   <article class="container-page py-10 sm:py-14">
     <div class="mx-auto max-w-2xl">
@@ -39,7 +43,21 @@ const jsonLd = {
       <div class="prose-article mt-10">
         <Content />
       </div>
-      <a href="/contatti" class="btn-primary mt-10 inline-flex">Richiedi informazioni</a>
+      {(service.id === 'consulenza-sito-esistente' || service.data.emergency) && (
+        <div class="mt-10 rounded-3xl border border-red-200 bg-red-50 p-6 sm:p-8">
+          <span class="badge border-red-200 text-red-600">Pronto intervento</span>
+          <h2 class="mt-3 font-display text-xl font-bold text-ink-900">Il tuo sito è stato attaccato o è andato offline?</h2>
+          <p class="mt-2 text-ink-600">Non perdere tempo: più si aspetta, più i danni crescono. Chiamaci subito, intervenire in fretta fa la differenza.</p>
+          <div class="mt-5 flex flex-col gap-3 sm:flex-row">
+            <a href="tel:+393450639886" class="btn-primary w-full sm:w-auto">Chiama per un'emergenza</a>
+            <a href="/contatti" class="btn-ghost w-full sm:w-auto">Scrivici</a>
+          </div>
+        </div>
+      )}
+
+      <a href="/contatti" class="btn-primary mt-10 inline-flex">
+        {service.id === 'consulenza-sito-esistente' ? 'Richiedi il check gratuito' : isQuick ? 'Chiedi una valutazione' : 'Richiedi informazioni'}
+      </a>
 
       {service.id === 'consulenza-sito-esistente' && (
         <div class="mt-10">
@@ -53,7 +71,7 @@ const jsonLd = {
           <div class="mt-5 grid gap-3 sm:grid-cols-3">
             {otherServices.map((s) => (
               <a href={`/servizi/${s.id}`} class="rounded-2xl border border-ink-100 p-4 text-sm font-medium text-ink-700 hover:border-brand-300 hover:text-brand-600">
-                {s.data.title}
+                {shortLabel(s.id, s.data.title)}
               </a>
             ))}
           </div>

@@ -29,3 +29,5 @@ Un sito statico, invece, viene "costruito" una volta in fase di pubblicazione: i
 ## Quindi quale scegliere?
 
 Se il tuo sito è principalmente vetrina, blog o anche un piccolo e-commerce, un sito statico moderno spesso offre più velocità e meno pensieri di manutenzione. Se hai bisogno di funzionalità molto specifiche e in continua evoluzione, WordPress può avere senso. Non esiste una risposta valida per tutti: dipende da cosa deve fare davvero il tuo sito.
+
+Se hai già un sito WordPress e temi di non aggiornarlo, leggi come funziona l'<a href="/servizi/aggiornamento-sicuro-wordpress">aggiornamento sicuro di WordPress, PHP e plugin</a>.

@@ -61,6 +61,8 @@ const services = defineCollection({
     description: z.string().max(160),
     icon: z.string().optional(),
     order: z.number().default(0),
+    emergency: z.boolean().default(false),
+    seoTitle: z.string().max(52).optional(),
     faq: z
       .array(
         z.object({
