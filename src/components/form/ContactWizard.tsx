@@ -358,6 +358,7 @@ export default function ContactWizard() {
       });
       if (!res.ok) throw new Error('Errore invio');
       setStatus('success');
+      (window as any).umami?.track('richiesta-contatto');
     } catch {
       setStatus('error');
     }

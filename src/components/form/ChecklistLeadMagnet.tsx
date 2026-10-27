@@ -17,6 +17,7 @@ export default function ChecklistLeadMagnet() {
       });
       if (!res.ok) throw new Error('Errore invio');
       setStatus('success');
+      (window as any).umami?.track('checklist-richiesta');
     } catch {
       setStatus('error');
     }
@@ -29,6 +30,7 @@ export default function ChecklistLeadMagnet() {
         <a
           href="/downloads/checklist-sito-non-porta-clienti.pdf"
           download
+          data-umami-event="checklist-download"
           className="btn-primary mt-4 inline-flex"
         >
           Scarica la checklist (PDF)

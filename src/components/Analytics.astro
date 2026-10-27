@@ -1,0 +1,42 @@
+---
+// Statistiche di visita con Umami Cloud (senza cookie, senza profilazione).
+// Si attiva solo se:
+//   1) la variabile PUBLIC_UMAMI_WEBSITE_ID è impostata (Netlify → Site configuration → Environment variables)
+//   2) il visitatore ha accettato la categoria "Statistiche" nel banner cookie.
+// Il banner salva la scelta in localStorage (chiave 'manvitech-cookie-consent') e
+// lancia l'evento 'manvitech:consent-updated': qui ci ascoltiamo entrambi.
+const websiteId = import.meta.env.PUBLIC_UMAMI_WEBSITE_ID;
+---
+
+{
+  websiteId && (
+    <script is:inline define:vars={{ websiteId }}>
+      (function () {
+        var KEY = 'manvitech-cookie-consent';
+        var loaded = false;
+        function allowed() {
+          try {
+            var c = JSON.parse(localStorage.getItem(KEY));
+            return !!(c && c.analytics);
+          } catch (e) {
+            return false;
+          }
+        }
+        function load() {
+          if (loaded) return;
+          loaded = true;
+          var s = document.createElement('script');
+          s.defer = true;
+          s.src = 'https://cloud.umami.is/script.js';
+          s.setAttribute('data-website-id', websiteId);
+          s.setAttribute('data-domains', 'manvitech.it,www.manvitech.it');
+          document.head.appendChild(s);
+        }
+        if (allowed()) load();
+        window.addEventListener('manvitech:consent-updated', function (e) {
+          if (e.detail && e.detail.analytics) load();
+        });
+      })();
+    </script>
+  )
+}
