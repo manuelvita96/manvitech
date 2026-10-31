@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 
 type ConsentState = {
   necessary: true; // sempre attivi, non disattivabili
-  analytics: boolean;
   marketing: boolean;
   decidedAt: string;
 };
@@ -21,7 +20,7 @@ function readConsent(): ConsentState | null {
 function writeConsent(state: Omit<ConsentState, 'decidedAt'>) {
   const full: ConsentState = { ...state, decidedAt: new Date().toISOString() };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(full));
-  // Evento globale: se in futuro aggiungiamo script di analytics/marketing,
+  // Evento globale: se in futuro aggiungiamo script di marketing,
   // si mettono in ascolto di questo evento per attivarsi solo col consenso.
   window.dispatchEvent(new CustomEvent('manvitech:consent-updated', { detail: full }));
 }
@@ -29,7 +28,6 @@ function writeConsent(state: Omit<ConsentState, 'decidedAt'>) {
 export default function CookieConsent() {
   const [visible, setVisible] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
-  const [analytics, setAnalytics] = useState(false);
   const [marketing, setMarketing] = useState(false);
 
   useEffect(() => {
@@ -45,17 +43,17 @@ export default function CookieConsent() {
   }, []);
 
   function acceptAll() {
-    writeConsent({ necessary: true, analytics: true, marketing: true });
+    writeConsent({ necessary: true, marketing: true });
     setVisible(false);
   }
 
   function rejectAll() {
-    writeConsent({ necessary: true, analytics: false, marketing: false });
+    writeConsent({ necessary: true, marketing: false });
     setVisible(false);
   }
 
   function saveCustom() {
-    writeConsent({ necessary: true, analytics, marketing });
+    writeConsent({ necessary: true, marketing });
     setVisible(false);
   }
 
@@ -72,7 +70,7 @@ export default function CookieConsent() {
             <div>
               <h2 className="font-display text-base font-semibold text-ink-900">Un attimo, prima di continuare</h2>
               <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-ink-500">
-                Usiamo solo i cookie tecnici indispensabili per far funzionare il sito. Nessun cookie di profilazione o pubblicitario, per ora — puoi comunque scegliere tu.{' '}
+                Usiamo solo i cookie tecnici indispensabili per far funzionare il sito. Nessun cookie di profilazione o pubblicitario. Per le visite usiamo statistiche anonime e senza cookie.{' '}
                 <a href="/cookie-policy" className="font-medium text-brand-600 hover:underline">Scopri di più</a>
               </p>
             </div>
@@ -102,20 +100,6 @@ export default function CookieConsent() {
                 </span>
               </div>
 
-              <label className="flex cursor-pointer items-start justify-between gap-4 rounded-2xl border border-ink-100 p-4">
-                <div>
-                  <p className="text-sm font-semibold text-ink-800">Statistiche</p>
-                  <p className="mt-0.5 text-xs text-ink-500">
-                    Ci aiuterebbero a capire come viene usato il sito. Al momento non sono attivi su Manvitech.
-                  </p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={analytics}
-                  onChange={(e) => setAnalytics(e.target.checked)}
-                  className="mt-0.5 h-5 w-5 shrink-0 accent-[#ed7d31]"
-                />
-              </label>
 
               <label className="flex cursor-pointer items-start justify-between gap-4 rounded-2xl border border-ink-100 p-4">
                 <div>
